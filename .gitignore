@@ -1,0 +1,35 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables / secrets
+.env
+
+# Test cache
+.pytest_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# FAISS index files (generated artifacts)
+*.index
+*.faiss
+
+# Processed data (generated artifacts)
+src/data/processed/
+
+# macOS
+.DS_Store
