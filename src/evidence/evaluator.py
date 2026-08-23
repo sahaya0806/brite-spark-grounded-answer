@@ -151,10 +151,8 @@ class EvidenceEvaluator:
             gaps = extract_gap_signals(result.clause, retrieved_ids, query_tokens)
             unresolved = tuple(
                 ref for ref in result.clause.cross_references
-                if _ref_id(ref) not in retrieved_ids
-                and not any(
-                    rid.startswith(_ref_id(ref) + ".")
-                    for rid in retrieved_ids
+                if not _is_ref_topically_resolved(
+                    _ref_id(ref), retrieved_ids, deduped_results, query_tokens
                 )
             )
             relevance = compute_relevance_score(result, support)
@@ -350,6 +348,49 @@ def _meaningful_query_tokens(question: str) -> frozenset[str]:
 def _ref_id(ref: str) -> str:
     """Strip § prefix from a cross-reference."""
     return ref.lstrip("§")
+
+
+def _is_ref_topically_resolved(
+    ref_id: str,
+    retrieved_ids: frozenset[str],
+    results: list[RetrievalResult],
+    query_tokens: frozenset[str],
+) -> bool:
+    """
+    Return True if a cross-reference is genuinely resolved by the retrieved evidence.
+
+    A reference is resolved when:
+    - The exact referenced clause ID is retrieved, OR
+    - A sub-clause of the referenced section is retrieved AND that sub-clause
+      actually shares meaningful vocabulary with the user's query.
+
+    The second condition prevents §5.4.1 (care allowances) from being counted
+    as a resolution for §7.1.3's delegation of full-time student policy to §5.4.
+    Retrieval relevance ≠ topic relevance for the delegated policy question.
+    """
+    # Direct exact match is always resolved
+    if ref_id in retrieved_ids:
+        return True
+
+    # Prefix match: a sub-clause of the referenced section is retrieved
+    # but only if it actually addresses the query topic
+    for result in results:
+        cid = result.clause.clause_id
+        if cid.startswith(ref_id + "."):
+            # Check that this sub-clause shares at least 2 meaningful query tokens
+            clause_tokens = frozenset(
+                re.findall(r'\b[a-z]{3,}\b', result.clause.text.lower())
+            )
+            meaningful_query = {
+                t for t in query_tokens
+                if t not in _STOP_WORDS and len(t) >= 3
+            }
+            overlap = meaningful_query & clause_tokens
+            if len(overlap) >= 2:
+                return True
+
+    return False
+
 
 
 def _unique_clauses_from_conflicts(

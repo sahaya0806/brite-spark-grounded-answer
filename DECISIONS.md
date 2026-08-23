@@ -758,3 +758,30 @@ invoked directly via `python -m src ask "<question>"`.
 **Context:** The hackathon requirements prioritize end-to-end explainability and
 ease of execution from a clean clone.  A unified pipeline object makes testing,
 CLI execution, and future milestone evaluation clean and straightforward.
+
+---
+
+## ADR-034 — Relevant retrieved text is not automatically sufficient evidence
+
+**Decision:** The EvidenceEvaluator strictly distinguishes between *retrieval relevance*
+and *evidence sufficiency*. When a retrieved clause delegates the core policy rule to a
+cross-reference (e.g., §7.1.3 stating "(see §5.4)" for full-time students), that
+cross-reference is only treated as resolved if the retrieved target clause actually
+addresses the specific delegated query topic. Semantically relevant or prefix-matching
+clauses from the target section that address an unrelated subject (e.g., §5.4.1 addressing
+care allowances) do NOT resolve the delegation gap and must result in ``INSUFFICIENT``.
+
+**Context:** During Milestone 6 manual validation against the real policy corpus, the
+question "What is the policy for full-time students?" retrieved §7.1.3 along with §5.4.1
+and §5.4.2 via hybrid search. Because §5.4.1 has clause ID starting with "5.4.", naive
+prefix-matching marked §5.4 as resolved, causing the evaluator to produce a false
+``SUPPORTED`` decision. In reality, Section 5.4 covers care allowances rather than full-time
+students, representing an intentional apparent policy gap in the manual.
+
+**Enforcement:**
+1. Cross-reference resolution (``_is_ref_topically_resolved``) requires either an exact
+   clause ID match or a prefix match where the sub-clause shares meaningful question vocabulary.
+2. Unresolved delegating cross-references remain flagged as ``unresolved_cross_refs``,
+   preventing false ``SUPPORTED`` classifications.
+3. The LLM is never invoked to decide whether a gap exists or to override an ``INSUFFICIENT``
+   determination.

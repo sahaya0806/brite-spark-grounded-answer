@@ -838,7 +838,7 @@ class TestRealCorpusEvidence:
     def test_case_b_status_insufficient(self, pipeline):
         retriever, evaluator = pipeline
         q = "What is the policy for full-time students?"
-        results = retriever.retrieve(q, top_k=10)
+        results = retriever.retrieve(q, top_k=15)
         decision = evaluator.evaluate(q, results)
         assert decision.status == DecisionStatus.INSUFFICIENT, (
             f"Expected INSUFFICIENT, got {decision.status}. "
@@ -848,7 +848,7 @@ class TestRealCorpusEvidence:
     def test_case_b_recommended_refuse(self, pipeline):
         retriever, evaluator = pipeline
         q = "What is the policy for full-time students?"
-        results = retriever.retrieve(q, top_k=10)
+        results = retriever.retrieve(q, top_k=15)
         decision = evaluator.evaluate(q, results)
         assert decision.recommended_action == "refuse"
 
@@ -859,7 +859,7 @@ class TestRealCorpusEvidence:
         """
         retriever, evaluator = pipeline
         q = "What is the policy for full-time students?"
-        results = retriever.retrieve(q, top_k=10)
+        results = retriever.retrieve(q, top_k=15)
         decision = evaluator.evaluate(q, results)
         assert decision.status != DecisionStatus.SUPPORTED, (
             "Gap case must not be marked SUPPORTED"

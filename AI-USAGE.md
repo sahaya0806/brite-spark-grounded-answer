@@ -170,3 +170,14 @@ judgement.
   - All 318 tests pass offline without an OpenAI API key.
   - GPT-4o mini is part of the runtime answer-generation architecture for `SUPPORTED` decisions only, and is never used for evidence evaluation or refusal overrides.
   - Citations are validated deterministically against authoritative retrieved clauses.
+
+---
+
+## Milestone 6 — Validation and Targeted Corrections
+
+- Manual end-to-end testing against the real policy corpus exposed two issues:
+  1. **Duplicate numeric rendering in conflict reports:** §4.3.2 repeated "10 calendar days" twice in its clause text, which was concatenated into `"10 calendar days, 10 calendar days"`. Antigravity resolved this by deduplicating raw numeric strings in `src/evidence/contradiction.py`.
+  2. **Apparent-gap false SUPPORTED decision:** For "What is the policy for full-time students?", hybrid retrieval fetched §7.1.3 (which delegates to §5.4) alongside §5.4.1/§5.4.2 (care allowances). Section-level prefix matching in `src/evidence/evaluator.py` previously considered §5.4 resolved. Antigravity implemented `_is_ref_topically_resolved` to enforce that prefix-matched sub-clauses must share meaningful query vocabulary to count as resolving a delegation gap.
+- Antigravity added regression test suites `TestApparentGapRegressions` and `TestConflictRenderingRegressions` in `tests/test_pipeline.py`.
+- The project team verified that all 329 tests pass across the entire suite and that the student question deterministically yields `INSUFFICIENT` without LLM overrides.
+

@@ -155,8 +155,18 @@ def _check_pair(
             continue  # same values — no conflict
 
         # Format the specific conflicting values for the report
-        raw_a = ", ".join(f.raw for f in facts_a[kind])
-        raw_b = ", ".join(f.raw for f in facts_b[kind])
+        # Use ordered deduplication to avoid "10 calendar days, 10 calendar days"
+        seen_raw_a: list[str] = []
+        for f in facts_a[kind]:
+            if f.raw not in seen_raw_a:
+                seen_raw_a.append(f.raw)
+        seen_raw_b: list[str] = []
+        for f in facts_b[kind]:
+            if f.raw not in seen_raw_b:
+                seen_raw_b.append(f.raw)
+        raw_a = ", ".join(seen_raw_a)
+        raw_b = ", ".join(seen_raw_b)
+
 
         kind_label = _kind_label(kind)
         explanation = (
