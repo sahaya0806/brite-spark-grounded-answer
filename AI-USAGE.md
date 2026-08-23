@@ -34,6 +34,19 @@ The Grounded Answer. It is updated incrementally as the project progresses.
 
 ---
 
+## Post-Milestone 1 — Corpus format clarification
+
+- The project team clarified with the Brite Spark organizers that the
+  supplied policy corpus is a Markdown (`.md`) file, not a PDF.
+- The initial implementation plan assumed PDF ingestion via PyMuPDF.
+- Kiro assisted with updating `requirements.txt` (removing `pymupdf`) and
+  drafting ADR-005 in DECISIONS.md to record the corrected ingestion approach.
+- The team reviewed and approved all changes before committing.
+- No parsing code was written yet; this update covers only the plan and
+  dependency corrections.
+
+---
+
 ## Principles
 
 The project team remains responsible for:

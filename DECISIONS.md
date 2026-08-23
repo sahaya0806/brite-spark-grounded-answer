@@ -101,3 +101,38 @@ future ADR).
 **Trade-offs:** More application-level glue code to write. Acceptable because
 the glue code *is* the submission — the evidence evaluation logic is what is
 being judged.
+
+---
+
+## ADR-005 — Markdown ingestion instead of PDF extraction
+
+**Decision:** Read the policy corpus directly as UTF-8 Markdown text using
+Python's standard `pathlib` / file I/O, with a custom structure-aware
+Markdown parser. Do not use PyMuPDF or any PDF extraction library.
+
+**Context:** The Brite Spark organizers supplied the policy manual as a
+Markdown (`.md`) file, not a PDF. This was clarified after the initial
+project setup. PyMuPDF was included in `requirements.txt` during Milestone 1
+based on the original assumption that the corpus would be a PDF.
+
+**Alternatives considered:**
+- PyMuPDF: appropriate for PDF extraction but irrelevant when the source is
+  already plain Markdown. Adding it would be unnecessary weight.
+- `mistune` / `markdown-it-py`: full Markdown-to-HTML parsers. Useful for
+  rendering but not needed here — we want to preserve headings and clause
+  structure as text, not render to HTML.
+- `python-markdown`: same concern as above.
+
+**Why direct Markdown parsing:** The Markdown source already contains the
+structure we need (headings, clause identifiers, numbered lists). A custom
+parser that walks the heading hierarchy preserves clause boundaries faithfully
+without any lossy format conversion. It is also simpler, has no additional
+dependencies, and keeps the source text byte-for-byte identical to the
+original corpus.
+
+**Consequences:**
+- PyMuPDF removed from `requirements.txt`.
+- The `src/ingestion/` package will implement a Markdown-aware clause
+  extractor rather than a PDF text extractor.
+- The policy manual must be stored as a `.md` file in `src/data/raw/`.
+- The source corpus must never be modified.
