@@ -12,12 +12,12 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 All 6 milestones are implemented and the 10-question final evaluation has been completed.
 
-**Milestone 6 — Grounded Answer Generation** 
-**Milestone 5 — Evidence Evaluation and Decision Layer** 
-**Milestone 4 — Hybrid Policy Retrieval** 
-**Milestone 3 — Clause-Level Parsing and Structured Clause Store** 
-**Milestone 2 — Markdown Policy Ingestion** 
-**Milestone 1 — Project Foundation** 
+**Grounded Answer Generation
+Evidence Evaluation and Decision Layer
+Hybrid Policy Retrieval
+Clause-Level Parsing and Structured Clause Store
+Markdown Policy Ingestion
+Project Foundation**
 
 ## Evaluation
 
