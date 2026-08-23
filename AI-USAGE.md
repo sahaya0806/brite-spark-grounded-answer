@@ -79,3 +79,26 @@ judgement.
   §9.1.4 reporting window) and the apparent cross-reference gap (§7.1.3)
   during corpus inspection.
 - All 53 tests were verified to pass before committing.
+
+---
+
+## Milestone 3 — Clause-Level Parsing and Structured Clause Store
+
+- Kiro assisted with implementing ``src/ingestion/parser.py``:
+  the ``PolicyClause`` and ``ClauseSubItem`` dataclasses, the ``parse_clauses``
+  function, and the line-accumulation state machine.
+- Kiro assisted with implementing ``src/ingestion/store.py``:
+  the ``ClauseStore`` class and ``ClauseNotFoundError``.
+- Kiro assisted with writing the test suite in ``tests/test_parser.py``
+  (72 tests covering basic extraction, Part/Section association, sub-items,
+  cross-references, source line tracking, ClauseStore API, table handling,
+  non-inflation guards, determinism, and 24 real corpus integration tests).
+- Kiro assisted with updating DECISIONS.md (ADR-009 through ADR-015),
+  AI-USAGE.md, and README.md.
+- The project team verified parser output against the real corpus before
+  writing any tests, confirmed the 137-clause count, and reviewed all
+  implementation and documentation before committing.
+- The project team confirmed that the intentional contradiction (§4.3.2 vs
+  §9.1.4) and the apparent gap (§7.1.3 → §5.4) are correctly preserved in
+  the parsed output and are explicitly covered by tests.
+- All 125 tests were verified to pass before committing.

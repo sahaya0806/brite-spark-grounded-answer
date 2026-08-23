@@ -235,3 +235,145 @@ not by headings.  This would not have been clear from assumptions alone.
 **Trade-offs:** One milestone is spent on inspection with no clause objects
 produced.  This is the correct trade-off because a wrong parser design would
 affect every downstream milestone.
+
+---
+
+## ADR-009 — Authoritative clauses as the fundamental evidence unit
+
+**Decision:** The fundamental evidence unit of the system is the authoritative
+clause — a numbered policy paragraph identified by a bold ``**N.N.N**`` opener.
+This is the unit stored, retrieved, and cited in every downstream stage.
+
+**Context:** The challenge requires clause-level citations.  The alternative
+would be arbitrary text chunks, but chunks would not correspond to any
+identifiable policy provision, making citations meaningless.  The corpus
+inspection in Milestone 2 confirmed that the document's own paragraph
+numbering scheme provides ready-made, citable identifiers.
+
+**Why **N.N.N** bold openers:** This is the exact pattern used consistently
+across all 137 clauses in the real corpus.  It was derived from inspection
+of the actual document, not from assumptions.  Alternative candidate patterns
+(H2 section headings, lettered sub-items) were examined and rejected (see
+ADR-010, ADR-011).
+
+**Trade-offs:** A clause may be long and multi-part (e.g. §6.4.1 has seven
+sub-items).  Retrieval may sometimes need to quote a sub-item rather than the
+full clause.  This is acceptable: the clause is the citation unit, and the
+sub-item text is preserved within the clause record for display purposes.
+
+---
+
+## ADR-010 — Lettered sub-items are clause parts, not independent clauses
+
+**Decision:** Items ``(a)``, ``(b)``, ``(c)`` … are sub-items of their parent
+``**N.N.N**`` clause and do not receive independent clause IDs.
+
+**Context:** 63 lettered sub-items appear in the corpus.  Treating each as
+an independent clause would produce ~200 "clauses" where the policy itself
+only numbers 137.  Sub-items cannot be cited independently in the policy
+(there is no authoritative identifier like ``§4.3.1(a)`` in the source).
+
+**Alternatives considered:**
+- Assign synthetic IDs such as ``4.3.1.a``: would invent identifiers not
+  present in the policy.  Violates the requirement not to invent clause IDs.
+
+**Why sub-items:** The sub-items are preserved as structured data within the
+parent clause, so downstream systems can still display them.  But the
+citation target remains the parent clause.
+
+---
+
+## ADR-011 — Part and Section headings preserved as context, not as clauses
+
+**Decision:** H1 Part headings and H2 Section headings are used to populate
+the ``part_id``, ``part_title``, ``section_id``, and ``section_title``
+fields of each clause.  They are not represented as independent clause records.
+
+**Context:** Parts and sections give context ("this is a rule about income")
+but contain no policy text of their own.  Creating clause records for them
+would artificially inflate the clause count and create records with no
+citable substance.
+
+**Why this approach:** Preserving the heading context within each clause record
+means every clause is self-describing — a downstream citation can say
+"Part 4, §4.3 Recipient obligations, clause 4.3.2" without having to look up
+the heading hierarchy separately.
+
+---
+
+## ADR-012 — Cross-references extracted as metadata but not resolved
+
+**Decision:** ``§``-prefixed references are extracted into the
+``cross_references`` field as metadata.  The parser does not verify whether
+the referenced clause exists, whether the reference is correct, or whether
+it is consistent with other references.
+
+**Context:** Resolving references at parse time would require the full clause
+store to exist while parsing (a circular dependency) and, more importantly,
+would obscure intentional inconsistencies.  The manual's planted gap
+(§7.1.3 references §5.4 which covers care allowances, not students) must be
+preserved as-is for the evidence evaluation stage to surface it.
+
+**Consequences:** The evidence evaluation layer (Milestone 5) will receive the
+cross-references as hints for multi-clause reasoning, not as verified links.
+
+---
+
+## ADR-013 — Tables are accumulated into their introducing clause
+
+**Decision:** Markdown table rows (lines starting with ``|``) are treated as
+body content of the clause whose opener immediately precedes them.  They are
+accumulated into the clause's ``text`` field.
+
+**Context:** Both tables in the corpus (§6.6.1, §7.2.1) appear immediately
+after the clause that introduces them ("The thresholds are —", "The monthly
+needs figures are —").  The table data is semantically part of that clause,
+not a separate policy provision.
+
+**Alternatives considered:**
+- Attaching the table to the section heading rather than a clause: the corpus
+  shows the table is always introduced by a clause sentence, not directly
+  under a section heading with no clause.
+- Treating each table row as an independent clause: there is no authoritative
+  identifier for table rows; doing so would invent structure.
+
+**Why inline accumulation:** The simplest approach that preserves the complete
+policy content and keeps the table associated with the clause that declares it.
+A downstream system displaying §6.6.1 will show the thresholds table as part
+of that clause, which is the correct policy context.
+
+---
+
+## ADR-014 — Contradictions and apparent gaps are preserved by the parser
+
+**Decision:** The parser preserves the source text exactly, including the
+known inconsistency (§4.3.2 states 10 days; §9.1.4 states 30 days for the
+same obligation) and the apparent cross-reference error (§7.1.3 → §5.4).
+
+**Context:** The problem statement explicitly states that the corpus
+intentionally contains difficult cases.  Resolving them at parse time would
+destroy the very evidence that the evidence evaluation layer needs to reason
+about.
+
+**Consequences:** The test suite explicitly verifies that:
+- §4.3.2 contains "10 calendar days" (unmodified)
+- §9.1.4 contains "30 calendar days" (unmodified)
+- §7.1.3 retains its §5.4 cross-reference (unresolved)
+
+The contradiction and gap are first-class test cases, not implementation bugs.
+
+---
+
+## ADR-015 — Source line ranges preserved for future citation verification
+
+**Decision:** Each ``PolicyClause`` records ``start_line`` and ``end_line``
+(1-indexed, referring to the original Markdown source).
+
+**Context:** A citation "§4.3.2, lines 200–200" is verifiable: a reviewer
+can open the source file and check the exact line.  This is more auditable
+than a character offset or a hash.
+
+**Consequences:** Line numbers are stable as long as the source file is not
+edited.  The source file must not be edited (as required by the project rules).
+The citation layer (Milestone 7) can use these line numbers to display
+exact source locations.

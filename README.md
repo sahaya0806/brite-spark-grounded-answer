@@ -10,12 +10,13 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
+**Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅  
 **Milestone 2 — Markdown Policy Ingestion** ✅  
 **Milestone 1 — Project Foundation** ✅
 
-The policy corpus (`data/raw/policy_manual.md`) can be loaded and structurally
-inspected. The RAG pipeline (retrieval, evidence evaluation, answer generation,
-citations) is not yet implemented.
+The policy corpus is fully parsed into 137 structured, citable clauses.
+The RAG pipeline (retrieval, evidence evaluation, answer generation, citations)
+is not yet implemented.
 
 ## Local Setup
 
@@ -95,19 +96,36 @@ The ingestion layer is in `src/ingestion/`.
 
 ```python
 from src.ingestion import load_policy_document, inspect_markdown
+from src.ingestion import parse_clauses, ClauseStore
 
 # Load the policy manual
 doc = load_policy_document("data/raw/policy_manual.md")
-print(doc.character_count)   # total characters
-print(doc.line_count)        # total lines
-print(doc.raw_text[:200])    # exact source text, unmodified
 
-# Inspect its structure
+# Inspect its structure (optional)
 insp = inspect_markdown(doc)
-print(len(insp.headings))                    # number of headings
-print(insp.heading_counts_by_level)          # {1: 15, 2: 54}
-print(insp.possible_clause_ids[:5])          # ('1.1.1', '1.1.2', ...)
-print(insp.cross_reference_patterns[:5])     # ('4.3.2', '1.4.3', ...)
+print(insp.heading_counts_by_level)   # {1: 15, 2: 54}
+
+# Parse all 137 authoritative clauses
+clauses = parse_clauses(doc)
+store = ClauseStore(clauses)
+print(store.count())                   # 137
+
+# Retrieve a specific clause
+c = store.get_by_id("4.3.2")
+print(c.clause_id)                     # "4.3.2"
+print(c.part_id)                       # "4"
+print(c.section_id)                    # "4.3"
+print(c.cross_references)             # ()
+print(c.text)
+# **4.3.2** A recipient must report any change in household
+# composition … within **10 calendar days** …
+
+# Each clause carries its source location
+print(c.start_line, c.end_line)        # 200  200
+
+# All clauses in document order
+for clause in store.all():
+    print(f"§{clause.clause_id}  {clause.text[:60]}")
 ```
 
 ## Project Structure
@@ -118,6 +136,8 @@ src/
   ingestion/
     loader.py       # load_policy_document() → PolicyDocument
     inspector.py    # inspect_markdown() → MarkdownInspection
+    parser.py       # parse_clauses() → list[PolicyClause]
+    store.py        # ClauseStore — in-memory clause index
   retrieval/        # Hybrid retrieval (semantic + BM25) — not yet implemented
   evidence/         # Evidence sufficiency evaluation — not yet implemented
   generation/       # Grounded answer construction — not yet implemented
