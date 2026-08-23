@@ -29,7 +29,7 @@ build/
 *.faiss
 
 # Processed data (generated artifacts)
-src/data/processed/
+data/processed/
 
 # macOS
 .DS_Store

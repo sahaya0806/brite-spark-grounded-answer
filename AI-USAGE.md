@@ -58,3 +58,24 @@ The project team remains responsible for:
 
 AI assistance accelerates implementation. It does not replace engineering
 judgement.
+
+---
+
+## Milestone 2 — Markdown Policy Ingestion
+
+- Kiro assisted with implementing `src/ingestion/loader.py` (PolicyDocument
+  dataclass, load_policy_document function, error handling).
+- Kiro assisted with implementing `src/ingestion/inspector.py`
+  (MarkdownInspection dataclass, inspect_markdown function, regex patterns).
+- Kiro assisted with writing the full test suite in
+  `tests/test_ingestion.py` (53 tests covering loader, inspector, and real
+  corpus integration).
+- Kiro assisted with updating DECISIONS.md (ADR-006, ADR-007, ADR-008),
+  AI-USAGE.md, and README.md.
+- The project team inspected the real policy corpus
+  (`data/raw/policy_manual.md`) before any implementation was written,
+  and reviewed all generated code and documentation before committing.
+- The project team identified the intentional contradiction (§4.3.2 vs
+  §9.1.4 reporting window) and the apparent cross-reference gap (§7.1.3)
+  during corpus inspection.
+- All 53 tests were verified to pass before committing.
