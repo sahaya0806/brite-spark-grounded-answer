@@ -10,23 +10,25 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
+**Milestone 6 — Grounded Answer Generation** ✅  
 **Milestone 5 — Evidence Evaluation and Decision Layer** ✅  
 **Milestone 4 — Hybrid Policy Retrieval** ✅  
 **Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅  
 **Milestone 2 — Markdown Policy Ingestion** ✅  
 **Milestone 1 — Project Foundation** ✅
 
-The policy corpus is fully parsed into 137 structured clauses, indexed
-for hybrid retrieval, and evaluated by the evidence evaluation layer for
-three-way decision status (SUPPORTED, INSUFFICIENT, CONFLICTING).
-Answer generation and citations are not yet implemented.
+The end-to-end pipeline is fully implemented:
+1. **Ingestion:** 137 authoritative clauses extracted with source line tracking.
+2. **Retrieval:** Hybrid vector (FAISS + OpenAI `text-embedding-3-small`) and lexical (BM25Okapi) retrieval with Reciprocal Rank Fusion.
+3. **Evidence Evaluation:** 3-way deterministic decision (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) with numeric/obligation conflict detection and gap analysis.
+4. **Answer Generation:** Grounded plain-language synthesis via GPT-4o mini with strict clause citations for supported questions, and deterministic refusal/conflict reporting for non-supported questions.
 
 ## Local Setup
 
 ### Prerequisites
 
-- Python 3.11
-- An OpenAI API key (for future milestones)
+- Python 3.11+
+- An OpenAI API key (for live production retrieval & generation; test suite runs 100% offline)
 
 ### 1. Clone the repository
 
@@ -81,108 +83,72 @@ supplied by the Brite Spark organisers as a Markdown file.
 # Show system status
 python -m src info
 
-# Ask a question (pipeline not yet implemented)
-python -m src ask "What is the resource limit?"
+# Ask a question (requires OPENAI_API_KEY)
+python -m src ask "What is the resource limit for a household?"
+
+# Test contradiction handling
+python -m src ask "How many days does a recipient have to report a change?"
+
+# Test gap/refusal handling
+python -m src ask "What is the policy for full-time students?"
 ```
 
-## Running the Smoke Tests
+## Running the Test Suite
+
+The test suite runs **100% offline** without requiring an OpenAI API key or network access:
 
 ```bash
 pytest
 ```
 
-Expected output: all 286 tests pass.
+Expected output: **all 318 tests pass** (in under 3 seconds).
 
-## Ingestion API
-
-The ingestion layer is in `src/ingestion/`.
+## End-to-End Pipeline API
 
 ```python
-from src.ingestion import load_policy_document, inspect_markdown
-from src.ingestion import parse_clauses, ClauseStore
-
-# Load the policy manual
-doc = load_policy_document("data/raw/policy_manual.md")
-
-# Inspect its structure (optional)
-insp = inspect_markdown(doc)
-print(insp.heading_counts_by_level)   # {1: 15, 2: 54}
-
-# Parse all 137 authoritative clauses
-clauses = parse_clauses(doc)
-store = ClauseStore(clauses)
-print(store.count())                   # 137
-
-# Retrieve a specific clause
-c = store.get_by_id("4.3.2")
-print(c.clause_id)                     # "4.3.2"
-print(c.part_id)                       # "4"
-print(c.section_id)                    # "4.3"
-print(c.cross_references)             # ()
-print(c.text)
-# **4.3.2** A recipient must report any change in household
-# composition … within **10 calendar days** …
-
-# Each clause carries its source location
-print(c.start_line, c.end_line)        # 200  200
-
-# All clauses in document order
-for clause in store.all():
-    print(f"§{clause.clause_id}  {clause.text[:60]}")
-```
-
-## Retrieval API
-
-The retrieval layer is in `src/retrieval/`. Tests use `FakeEmbeddingProvider`
-(no API key required). Production use requires `OPENAI_API_KEY`.
-
-```python
-from src.ingestion import load_policy_document, parse_clauses, ClauseStore
-from src.retrieval import HybridRetriever, RetrieverConfig
+from src.pipeline import PolicyQAPipeline
+from src.generation.providers import OpenAIChatProvider
 from src.retrieval.embeddings import OpenAIEmbeddingProvider
 
-doc = load_policy_document("data/raw/policy_manual.md")
-store = ClauseStore(parse_clauses(doc))
-retriever = HybridRetriever.build(store.all(), OpenAIEmbeddingProvider())
+# Build end-to-end pipeline from Markdown policy corpus
+pipeline = PolicyQAPipeline.build_from_corpus(
+    corpus_path="data/raw/policy_manual.md",
+    embedding_provider=OpenAIEmbeddingProvider(),
+    chat_provider=OpenAIChatProvider(),
+)
 
-results = retriever.retrieve("How many days to report a change?", top_k=5)
-for r in results:
-    print(f"§{r.clause.clause_id}  rrf={r.combined_score:.4f}  sources={r.sources}")
-    print(f"  {r.clause.text[:80]}…")
+# Ask a question
+answer = pipeline.ask("How many days does a recipient have to report a change?")
+
+print(f"Status: {answer.status.value}")      # CONFLICTING
+print(f"Answer: {answer.answer_text}")
+print(f"Citations: {answer.citations}")
 ```
+
+## Configuration
 
 | Env Variable | Default | Purpose |
 |---|---|---|
-| `OPENAI_API_KEY` | — | Required for production embeddings |
-| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
+| `OPENAI_API_KEY` | — | Required for live OpenAI embeddings and chat generation |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | OpenAI chat completion model |
 
 | Component | Implementation |
 |---|---|
-| Semantic | FAISS `IndexFlatIP` + OpenAI `text-embedding-3-small` |
-| Lexical | BM25Okapi (`rank-bm25`) |
-| Merging | Reciprocal Rank Fusion (k=60) |
-
-## Evidence Evaluation API
-
-The evidence evaluation layer is in `src/evidence/`. It evaluates retrieved clauses to make a 3-way decision (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) without generating ungrounded answers.
-
-```python
-from src.evidence import EvidenceEvaluator, DecisionStatus
-
-evaluator = EvidenceEvaluator()
-decision = evaluator.evaluate("How many days to report a change?", results)
-
-print(decision.status)              # DecisionStatus.CONFLICTING
-print(decision.rationale)           # Detected 1 conflicting provision(s)...
-print(decision.recommended_action)  # "surface_conflict"
-print(decision.supporting_clause_ids)  # ('4.3.2', '9.1.4')
-```
+| Ingestion | Structure-aware Markdown parsing into 137 `PolicyClause` records |
+| Semantic Retrieval | FAISS `IndexFlatIP` + OpenAI `text-embedding-3-small` |
+| Lexical Retrieval | BM25Okapi (`rank-bm25`) |
+| Hybrid Merging | Reciprocal Rank Fusion ($k=60$) |
+| Evidence Evaluation | Deterministic signal extraction & scope-aware conflict detection |
+| Answer Generation | Grounded GPT-4o mini synthesis + deterministic refusal/conflict paths |
+| Citation Validation | Deterministic extraction and validation against authoritative clause IDs |
 
 ## Project Structure
 
 ```text
 src/
   app.py            # CLI entry point (Typer)
+  pipeline.py       # PolicyQAPipeline — unified end-to-end RAG pipeline
   ingestion/
     loader.py       # load_policy_document() → PolicyDocument
     inspector.py    # inspect_markdown() → MarkdownInspection
@@ -199,24 +165,30 @@ src/
     scoring.py      # Signal extraction, numeric fact extraction, relevance scoring
     contradiction.py# detect_conflicts() — topic & numeric conflict detector
     evaluator.py    # EvidenceEvaluator — 3-way decision logic
-  generation/       # Grounded answer construction — not yet implemented
-  citation/         # Deterministic citation rendering — not yet implemented
-  models/           # Shared Pydantic schemas — not yet implemented
+  generation/
+    models.py       # GroundedAnswer data model
+    providers.py    # ChatProvider protocol + OpenAI / Fake implementations
+    prompts.py      # System and user prompts for strict grounded synthesis
+    generator.py    # GroundedAnswerGenerator (SUPPORTED / INSUFFICIENT / CONFLICTING)
+  citation/
+    renderer.py     # Clause citation formatting, extraction, sanitization, validation
 data/
   raw/              # Source policy document (policy_manual.md)
-  processed/        # Parsed clause store (JSON) — not yet implemented
-evaluation/         # Ten-question evaluation set — not yet implemented
-tests/              # pytest test suite
+  processed/        # Parsed clause store
+tests/              # Complete pytest test suite (318 offline tests)
 ```
 
 ## Architecture Overview
 
 ```
 Question
-  → Hybrid Retrieval (Semantic + BM25)
-  → Candidate Clauses
-  → Evidence Evaluation
-      ├── SUPPORTED    → Generate grounded answer + citations
-      ├── INSUFFICIENT → Explicit refusal + next action
-      └── CONFLICTING  → Surface both clauses, explain conflict
+   ↓
+Hybrid Retrieval (Semantic + BM25)
+   ↓
+Candidate Clauses (RetrievalResult)
+   ↓
+Evidence Evaluation (EvidenceEvaluator)
+   ├── SUPPORTED    → Grounded Answer Generator (GPT-4o mini) + Exact Citations
+   ├── INSUFFICIENT → Deterministic Refusal + Gap Explanation + Escalation Guidance
+   └── CONFLICTING  → Deterministic Conflict Report (surfacing both provisions)
 ```

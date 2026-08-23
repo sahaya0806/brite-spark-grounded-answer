@@ -652,3 +652,109 @@ permitted to propagate to the citation layer.
 - Retrieval results are deduplicated by ``clause_id`` upon entry to the evaluator.
 - All clause references are verified to have originated from the authoritative
   corpus.
+
+---
+
+## ADR-028 — LLM role strictly as grounded natural-language constructor (GPT-4o mini)
+
+**Decision:** GPT-4o mini is employed exclusively to express accepted policy
+evidence into fluent, plain-language natural text for ``SUPPORTED`` decisions.
+It is never used to determine policy applicability, evaluate evidence sufficiency,
+decide between conflicting provisions, or access general external knowledge.
+
+**Context:** Allowing an LLM to answer policy questions directly produces fluent
+hallucinations when policy details are missing or nuanced.  By restricting the
+model to synthesize only the specific text of accepted ``PolicyClause`` records,
+the LLM operates as an expression compiler rather than a policy authority.
+
+**Alternatives considered:**
+- End-to-end RAG with LLM self-evaluation: prone to confident hallucinations
+  and inconsistent refusal thresholds.
+- Template-only string formatting: produces rigid answers that do not read
+  naturally or accommodate multi-clause synthesis.
+
+**Constraints:**
+- The prompt explicitly forbids external knowledge, extrapolation, and uncited claims.
+- Every substantive claim must be tagged with an exact clause citation ``[§<clause_id>]``.
+
+---
+
+## ADR-029 — ChatProvider Protocol and deterministic FakeChatProvider for offline testing
+
+**Decision:** Define ``ChatProvider`` as a Python ``Protocol`` and provide a
+deterministic ``FakeChatProvider`` for unit and integration testing.
+
+**Context:** The test suite must run 100% offline without requiring network calls
+or an OpenAI API key.  Decoupling the generation layer via a Protocol ensures
+fast test execution (<3s for 318+ tests) and prevents flaky test runs.
+
+**Implementations:**
+- ``OpenAIChatProvider``: production client using ``OPENAI_CHAT_MODEL``
+  (defaulting to ``gpt-4o-mini``) and ``OPENAI_API_KEY``.
+- ``FakeChatProvider``: test double supporting canned responses, custom
+  responders, and call-history inspection.
+
+---
+
+## ADR-030 — Deterministic citation validation and provenance enforcement
+
+**Decision:** All citations in generated responses are extracted, validated, and
+sanitized by deterministic Python code against the authoritative
+``supporting_clause_ids`` from ``EvidenceDecision``.
+
+**Context:** A language model cannot be trusted not to invent or misremember clause
+numbers (e.g. inventing "§99.99" or confusing "§4.3.2" with "§4.3.1").
+
+**Enforcement:**
+1. Extract all clause ID patterns (`§N.N.N` or `clause N.N.N`) from LLM text.
+2. Filter against the allowed set of `supporting_clause_ids`.
+3. Strip any unallowed/hallucinated citations from the final text.
+4. If the LLM omitted citations, deterministically append valid citation tags.
+5. Format full citations with source line ranges (e.g. `§4.3.2, line 200`).
+
+---
+
+## ADR-031 — Separate refusal and conflict generation pathways without LLM overrides
+
+**Decision:** For ``INSUFFICIENT`` and ``CONFLICTING`` decisions, user-facing
+responses are constructed deterministically without invoking the language model.
+
+**Context:** When evidence is insufficient or contradictory, asking an LLM to
+generate a refusal risks the LLM answering anyway from parametric memory.
+Deterministic pathways guarantee that:
+- ``INSUFFICIENT`` always produces a clear refusal explaining the specific gap
+  and recommending policy administration consultation.
+- ``CONFLICTING`` always surfaces both conflicting provisions (e.g. §4.3.2 vs
+  §9.1.4) without picking one.
+- Zero LLM tokens are consumed for non-supported questions.
+
+---
+
+## ADR-032 — Explicit answer vs refusal boundary
+
+**Decision:** The boundary between answering and refusing is explicitly defined
+by the ``EvidenceEvaluator`` rules and thresholds:
+1. **Answer (SUPPORTED)**: Requires aggregate support score $\ge 0.35$, at least
+   one strong clause score $\ge 0.40$, no material contradictions, and no
+   unresolved delegating cross-references.
+2. **Refusal (INSUFFICIENT)**: Triggered when evidence scores fall below threshold,
+   when clauses delegate to missing cross-references (§7.1.3 → §5.4), or when no
+   relevant clauses are retrieved.
+3. **Conflict Explanation (CONFLICTING)**: Triggered when two or more relevant
+   clauses from different sections specify competing values for the same obligation.
+
+**Rationale:** Setting a conservative refusal boundary prevents false confidence.
+A refusal protects claimants and staff from incorrect determinations, whereas a
+hallucinated answer can cause compliance failures.
+
+---
+
+## ADR-033 — Unified PolicyQAPipeline and Typer CLI interface
+
+**Decision:** Provide ``PolicyQAPipeline`` as the single composition root uniting
+``HybridRetriever``, ``EvidenceEvaluator``, and ``GroundedAnswerGenerator``,
+invoked directly via `python -m src ask "<question>"`.
+
+**Context:** The hackathon requirements prioritize end-to-end explainability and
+ease of execution from a clean clone.  A unified pipeline object makes testing,
+CLI execution, and future milestone evaluation clean and straightforward.

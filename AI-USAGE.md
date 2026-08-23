@@ -149,3 +149,24 @@ judgement.
   - Drafted ADR-023 through ADR-027 in `DECISIONS.md`.
   - Updated `README.md` with Evidence Evaluation API documentation.
 - The project team verified that all 286 tests pass across the entire suite, confirmed that evidence evaluation is strictly separated from retrieval, and verified the three-way decision behavior (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) on both synthetic and real-corpus test cases.
+
+---
+
+## Milestone 6 — Grounded Answer Generation
+
+- Antigravity assisted with implementing the grounded answer generation package:
+  - `src/generation/providers.py` (`ChatProvider` Protocol, `OpenAIChatProvider` using `gpt-4o-mini`, and deterministic `FakeChatProvider` for offline testing).
+  - `src/citation/renderer.py` and `src/citation/__init__.py` (`format_clause_citation`, `format_short_citation`, `extract_cited_clause_ids`, `validate_citations`, `sanitize_text_citations`).
+  - `src/generation/models.py` (`GroundedAnswer`).
+  - `src/generation/prompts.py` (`SYSTEM_PROMPT` and `build_grounded_prompt`).
+  - `src/generation/generator.py` (`GroundedAnswerGenerator` implementing `SUPPORTED`, `INSUFFICIENT`, and `CONFLICTING` paths).
+  - `src/pipeline.py` (`PolicyQAPipeline` unifying retrieval, evidence evaluation, and answer generation).
+  - `src/app.py` (CLI `ask` and `info` commands).
+- Antigravity assisted with writing comprehensive unit and end-to-end tests:
+  - `tests/test_generation.py` (25 tests covering providers, prompt construction, citation formatting/sanitization, and generator behavior across all 3 decision paths).
+  - `tests/test_pipeline.py` (7 tests covering end-to-end pipeline execution on real corpus contradiction, gap, and supported cases, as well as CLI command execution).
+- Antigravity assisted with updating `DECISIONS.md` (ADR-028 through ADR-033), `AI-USAGE.md`, and `README.md`.
+- The project team verified that:
+  - All 318 tests pass offline without an OpenAI API key.
+  - GPT-4o mini is part of the runtime answer-generation architecture for `SUPPORTED` decisions only, and is never used for evidence evaluation or refusal overrides.
+  - Citations are validated deterministically against authoritative retrieved clauses.
