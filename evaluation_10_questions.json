@@ -1,0 +1,198 @@
+[
+  {
+    "qid": "Q1",
+    "question": "What information must an applicant provide?",
+    "status": "SUPPORTED",
+    "answer": "An applicant must provide evidence of their identity, residence, income, and resources [§8.2.1]. If an applicant cannot provide a specified document, the Department will consider alternative evidence and will not refuse the application solely because a particular document is missing [§8.2.2].",
+    "citations": [
+      "§8.2.1, line 372",
+      "§8.2.2, line 374",
+      "§8.3.2, line 382"
+    ],
+    "supporting_clause_ids": [
+      "8.2.1",
+      "8.2.2"
+    ],
+    "refusal": false,
+    "rationale": "Evidence support score 0.624 >= threshold 0.350. 6 complete strong evidence item(s) found.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q2",
+    "question": "What evidence is required to establish an applicant's identity, residence, income, and resources?",
+    "status": "SUPPORTED",
+    "answer": "To establish an applicant's identity, residence, income, and resources, the applicant must provide evidence of these elements as required by the program [§8.2.1]. If the applicant is unable to provide a specified document, the Department will consider alternative evidence and will not refuse the application solely because a particular document is missing [§8.2.2]. Additionally, the Department must allow the applicant at least 14 days to supply the requested evidence and will extend this period if the applicant is making reasonable efforts to obtain it [§8.2.3].",
+    "citations": [
+      "§8.2.1, line 372",
+      "§8.2.2, line 374",
+      "§8.2.3, line 376"
+    ],
+    "supporting_clause_ids": [
+      "8.2.1",
+      "8.2.2",
+      "8.2.3"
+    ],
+    "refusal": false,
+    "rationale": "Evidence support score 0.460 >= threshold 0.350. 5 complete strong evidence item(s) found.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q3",
+    "question": "What are the recipient's obligations to report changes in circumstances?",
+    "status": "CONFLICTING",
+    "answer": "The policy manual contains conflicting provisions for this question. §4.3.2 states '10 calendar days' (4.3 Recipient obligations) while §9.1.4 states '30 calendar days' (9.1 Establishing an overpayment). The manual does not provide enough information for the system to safely determine which provision governs. Please consult the appropriate policy administrator.",
+    "citations": [
+      "§4.3.2, line 200",
+      "§9.1.4, line 448"
+    ],
+    "supporting_clause_ids": [
+      "4.3.2",
+      "9.1.4"
+    ],
+    "refusal": true,
+    "rationale": "Detected 1 conflicting provision(s) in the retrieved evidence. The manual appears to contain contradictory rules for this question.",
+    "conflicts": [
+      {
+        "clause_a": "4.3.2",
+        "value_a": "10 calendar days",
+        "clause_b": "9.1.4",
+        "value_b": "30 calendar days",
+        "explanation": "§4.3.2 states '10 calendar days' while §9.1.4 states '30 calendar days' for the same day-count obligation. Both clauses share policy vocabulary: calendar, change, circumstances, days, report."
+      }
+    ]
+  },
+  {
+    "qid": "Q4",
+    "question": "What income threshold is used when assessing eligibility?",
+    "status": "INSUFFICIENT",
+    "answer": "The policy manual does not provide enough information to answer this question reliably. The closest relevant provision is §6.3.2 (6.3 Irregular and lump-sum income), but it does not definitively settle the question. Details: No policy provisions mention used, assessing. Please consult the appropriate policy administrator.",
+    "citations": [
+      "§6.3.2, line 272",
+      "§6.6.1, lines 306–317",
+      "§2.1.2, lines 72–84"
+    ],
+    "supporting_clause_ids": [
+      "6.3.2",
+      "6.6.1",
+      "2.1.2"
+    ],
+    "refusal": true,
+    "rationale": "The policy manual does not contain provisions addressing: used, assessing.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q5",
+    "question": "What income can be disregarded when calculating entitlement?",
+    "status": "SUPPORTED",
+    "answer": "The provided policy evidence does not specify any particular types of income that can be disregarded when calculating entitlement. It primarily discusses how lump-sum income is treated [§6.3.2] and outlines income thresholds for eligibility [§6.6.1]. Therefore, there is no information available regarding income that can be disregarded in the calculation of entitlement.",
+    "citations": [
+      "§6.3.2, line 272",
+      "§9.2.2, line 456",
+      "§6.6.1, lines 306–317"
+    ],
+    "supporting_clause_ids": [
+      "6.3.2",
+      "6.6.1"
+    ],
+    "refusal": false,
+    "rationale": "Evidence support score 0.591 >= threshold 0.350. 4 complete strong evidence item(s) found.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q6",
+    "question": "How many days does a recipient have to report a change?",
+    "status": "CONFLICTING",
+    "answer": "The policy manual contains conflicting provisions for this question. §4.3.2 states '10 calendar days' (4.3 Recipient obligations) while §9.1.4 states '30 calendar days' (9.1 Establishing an overpayment). The manual does not provide enough information for the system to safely determine which provision governs. Please consult the appropriate policy administrator.",
+    "citations": [
+      "§4.3.2, line 200",
+      "§9.1.4, line 448"
+    ],
+    "supporting_clause_ids": [
+      "4.3.2",
+      "9.1.4"
+    ],
+    "refusal": true,
+    "rationale": "Detected 1 conflicting provision(s) in the retrieved evidence. The manual appears to contain contradictory rules for this question.",
+    "conflicts": [
+      {
+        "clause_a": "4.3.2",
+        "value_a": "10 calendar days",
+        "clause_b": "9.1.4",
+        "value_b": "30 calendar days",
+        "explanation": "§4.3.2 states '10 calendar days' while §9.1.4 states '30 calendar days' for the same day-count obligation. Both clauses share policy vocabulary: calendar, change, circumstances, days, report."
+      }
+    ]
+  },
+  {
+    "qid": "Q7",
+    "question": "What is the policy for full-time students?",
+    "status": "INSUFFICIENT",
+    "answer": "The policy manual does not provide enough information to answer this question reliably. The closest relevant provision is §7.1.3 (7.1 The award), but it does not definitively settle the question. Details: unresolved_cross_refs:§5.4,§7.3; delegates_to_cross_reference; unresolved_cross_refs:§8.7 Please consult the appropriate policy administrator.",
+    "citations": [
+      "§7.1.3, line 327",
+      "§3.2.3, line 148",
+      "§5.2.3, line 222"
+    ],
+    "supporting_clause_ids": [
+      "7.1.3",
+      "3.2.3",
+      "5.2.3"
+    ],
+    "refusal": true,
+    "rationale": "Evidence support score 0.489 below threshold 0.350, or no complete substantive clause found (best: 0.708). Gap signals: unresolved_cross_refs:§5.4,§7.3; delegates_to_cross_reference; unresolved_cross_refs:§8.7. Relevant clause (§7.1.3) delegates or has unresolved references.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q8",
+    "question": "What is the policy for a household that owns three electric vehicles?",
+    "status": "INSUFFICIENT",
+    "answer": "The policy manual does not provide enough information to answer this question reliably. The closest relevant provision is §2.4.2 (2.4 Resources), but it does not definitively settle the question. Details: No policy provisions mention owns, three, electric. Please consult the appropriate policy administrator.",
+    "citations": [
+      "§2.4.2, lines 110–120",
+      "§8.3.2, line 382",
+      "§3.2.2, lines 140–146"
+    ],
+    "supporting_clause_ids": [
+      "2.4.2",
+      "8.3.2",
+      "3.2.2"
+    ],
+    "refusal": true,
+    "rationale": "The policy manual does not contain provisions addressing: owns, three, electric.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q9",
+    "question": "Does the program provide a special benefit for households affected by flooding?",
+    "status": "INSUFFICIENT",
+    "answer": "The policy manual does not provide enough information to answer this question reliably. The closest relevant provision is §5.2.3 (5.2 Households including a temporarily absent member), but it does not definitively settle the question. Details: No policy provisions mention special, benefit, flooding. Please consult the appropriate policy administrator.",
+    "citations": [
+      "§5.2.3, line 222",
+      "§5.4.2, line 234",
+      "§11.1.1, line 552"
+    ],
+    "supporting_clause_ids": [
+      "5.2.3",
+      "5.4.2",
+      "11.1.1"
+    ],
+    "refusal": true,
+    "rationale": "The policy manual does not contain provisions addressing: special, benefit, flooding.",
+    "conflicts": []
+  },
+  {
+    "qid": "Q10",
+    "question": "What rule applies to full-time students under the policy?",
+    "status": "SUPPORTED",
+    "answer": "The provided policy evidence does not contain specific information regarding rules that apply to full-time students. Therefore, I cannot provide an answer based on the supplied clauses. [§6.4.2]",
+    "citations": [
+      "§6.4.2, line 294"
+    ],
+    "supporting_clause_ids": [
+      "6.4.2"
+    ],
+    "refusal": false,
+    "rationale": "Evidence support score 0.509 >= threshold 0.350. 1 complete strong evidence item(s) found.",
+    "conflicts": []
+  }
+]

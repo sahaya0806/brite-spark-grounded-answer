@@ -785,3 +785,184 @@ students, representing an intentional apparent policy gap in the manual.
    preventing false ``SUPPORTED`` classifications.
 3. The LLM is never invoked to decide whether a gap exists or to override an ``INSUFFICIENT``
    determination.
+
+---
+
+## Milestone 6 — Final 10-Question Evaluation Results
+
+The following 10 questions were run against the real supplied policy corpus
+(`data/raw/policy_manual.md`) using the live end-to-end CLI.
+No question-specific rules or hardcoded answers were added before this run.
+Results are recorded honestly, including failures.
+
+| # | Question | Expected | Actual | Result |
+|---|----------|----------|--------|--------|
+| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | ✅ PASS |
+| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED | ✅ PASS |
+| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING | ✅ PASS |
+| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT | ✅ PASS |
+| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED | ❌ FAIL |
+| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING | ✅ PASS |
+| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | ❌ FAIL |
+
+**Total: 10 | Passed: 8 | Failed: 2 | Pass rate: 80%**
+
+### Notes on Failures
+
+**Q5 — Income disregard.** The evaluator returned `SUPPORTED` because §6.3.2 and
+§6.6.1 contain income-related vocabulary scoring above the support threshold. However,
+neither clause specifically addresses income disregards for entitlement calculation.
+The LLM correctly noted "no information available" in the answer text, revealing a
+mismatch between evaluator score and semantic relevance. Root cause: lexical signal
+matching on "income" does not distinguish between income thresholds, income categories,
+and income disregards.
+
+**Q10 — Full-time student paraphrase.** The canonical phrasing (Q7) correctly returns
+`INSUFFICIENT`. The paraphrase ("What rule applies to full-time students under the
+policy?") retrieved §6.4.2 via lexical match on "time", producing a different evidence
+set that lacked delegation signals. Root cause: paraphrase sensitivity — identical
+underlying gaps may not be detected when differently phrased queries retrieve different
+clause sets.
+
+---
+
+## ADR-035 — Where We Draw the Line: Answering vs Refusing
+
+**Principle.** The system answers only when retrieved policy evidence is
+sufficiently clear and internally consistent to support the substantive claim.
+When in doubt, the system refuses.
+
+**The system refuses (INSUFFICIENT) when:**
+1. No relevant clause scores above the minimum relevance threshold (0.15).
+2. A primary clause delegates to a cross-reference that does not topically address the query.
+3. The aggregate support score falls below the minimum threshold (0.35) with no complete strong item.
+4. Key query concepts are entirely absent from the retrieved manual text.
+5. All topic-specific clauses delegate rather than provide a substantive rule.
+
+**The system surfaces a conflict (CONFLICTING) when:**
+Two or more relevant clauses from different sections specify competing values for the
+same obligation. The system must not silently choose one provision.
+
+**The system answers (SUPPORTED) when:**
+- Aggregate support score ≥ 0.35.
+- At least one complete strong clause (relevance ≥ 0.40) directly addresses the query
+  without delegating to an unresolved cross-reference.
+- No material contradictions are detected.
+
+**Why this conservative boundary?**
+A false positive policy answer can cause a real person to be incorrectly told they are
+eligible, ineligible, entitled, or subject to a requirement. When the manual does not
+settle the matter, generating a plausible-sounding answer is more dangerous than refusing.
+Refusing and directing the user to a policy administrator is always the safer outcome
+when the policy is silent, ambiguous, or self-contradictory. Retrieval relevance is not
+evidence sufficiency — this principle is non-negotiable.
+
+---
+
+## ADR-036 — Why Each Technology Was Chosen
+
+### Python 3.11+
+All required libraries (FAISS, rank-bm25, OpenAI SDK, Pydantic, Typer) have
+first-class Python support. Python allows fast iteration on pipeline logic — which
+is what is being evaluated — rather than managing language interoperability.
+
+### FAISS (`IndexFlatIP`)
+FAISS is the standard library for dense vector retrieval in Python RAG systems.
+`IndexFlatIP` (flat exact inner-product search over L2-normalised vectors) gives
+exact cosine similarity. At 137 clauses this is trivially fast with no approximation
+tradeoffs. FAISS was preferred over pure NumPy for API consistency and production familiarity.
+
+### BM25Okapi (`rank-bm25`)
+Policy text contains precise vocabulary, clause IDs, and numeric values that embedding
+models can underweight. "10 calendar days" and "30 calendar days" look similar
+semantically but are legally distinct — BM25 reliably ranks them by exact token match.
+BM25Okapi is the canonical, peer-reviewed variant. The tokeniser preserves numbers,
+clause IDs, and monetary values as single tokens so legal detail is not lost.
+
+### Reciprocal Rank Fusion (RRF, k=60)
+Semantic cosine scores and normalised BM25 scores cannot be directly summed — their
+distributions differ. RRF merges by rank position only, making it calibration-free
+(Cormack et al., 2009). No weight tuning is required, which eliminates a significant
+source of brittleness.
+
+### OpenAI `text-embedding-3-small`
+Already available from the OpenAI SDK dependency. Current, cost-effective embedding
+model with strong English performance. `FakeEmbeddingProvider` enables 100% offline
+testing with no API key.
+
+### GPT-4o mini (answer generation only)
+Chosen over GPT-4o to minimise cost, and over local open-source models to avoid GPU
+dependency and setup complexity. Used only to express accepted clause text in plain
+language — not to reason about evidence sufficiency. Grounding constraints make
+generation straightforward; a larger model adds cost with no evaluation benefit.
+
+### Deterministic Evidence Evaluation (not LLM-based)
+- **Reproducibility:** the same question always produces the same decision.
+- **Offline testing:** all 333 tests run under 5 seconds without API keys.
+- **Correctness:** signal extraction directly encodes domain logic; LLMs risk
+  hallucinating justifications for wrong decisions.
+- **Cost:** zero API tokens consumed for INSUFFICIENT and CONFLICTING cases.
+
+### Clause-Level Retrieval (not arbitrary chunks)
+Citations must point to specific authoritative clauses. Arbitrary chunks can span two
+clauses, making citation meaningless. 137 clauses at ~212 chars average are small
+enough to embed individually. The document itself provides authoritative citation
+identifiers (bold **N.N.N** openers).
+
+### Markdown Ingestion (not PDF extraction)
+The organizers supplied the corpus as a `.md` file. Direct Markdown reading is
+zero-dependency, lossless, and preserves source text byte-for-byte for citation
+traceability. The heading hierarchy and clause structure are already present —
+no format conversion is needed.
+
+### Typer CLI (not a web interface)
+The brief specifies a CLI is sufficient and UI quality is not assessed. Typer provides
+clean, auto-documented commands with zero web-framework overhead.
+
+### No LangChain or LlamaIndex
+Framework abstractions would obscure the deliberate three-stage separation
+(retrieve → evaluate → generate) that is the architectural submission. Each library
+has a single, clear responsibility. The pipeline is readable without framework-specific
+knowledge.
+
+---
+
+## ADR-037 — Deliberate Scope Cuts (Not Implemented)
+
+These are intentional scope decisions, not accidental omissions.
+
+- **No web UI.** The brief specifies a CLI is sufficient; UI quality is not assessed.
+- **No multi-turn conversation or memory.** Each question is treated independently.
+  Session memory would add significant infrastructure with no grounding benefit.
+- **No fine-tuning.** The 137-clause corpus is too small for meaningful fine-tuning
+  signal. Grounding constraints prevent hallucination more reliably.
+- **No latency optimisation.** Sufficient for CLI demonstration; production latency
+  engineering is out of scope.
+- **No multi-corpus support.** Designed specifically for the supplied Calder County
+  corpus. Generalising to arbitrary documents is outside the hackathon scope.
+
+---
+
+## ADR-038 — If We Had More Time
+
+**Priority 1 — Improve retrieval and evidence evaluation.**
+The 80% pass rate (8/10) shows paraphrase robustness and scoring precision are the
+primary remaining challenges. Both failures (Q5, Q10) are retrieval/scoring issues.
+With more time: improve topic overlap scoring, build a paraphrase regression suite,
+and improve multi-hop cross-reference reasoning.
+
+**Priority 2 — Expand evaluation coverage.**
+10 questions is insufficient to characterise full system behaviour. A comprehensive
+evaluation would cover all 12 policy parts, all known contradictions, all apparent
+gaps, and adversarial edge cases (30–50 questions minimum).
+
+**Priority 3 — Better citation navigation.**
+Add a viewer that opens the policy manual to the exact cited source line, enabling
+answer verification without reading the full document.
+
+**Priority 4 — Simple UI (last priority).**
+A minimal Gradio or Streamlit interface for non-technical stakeholder demos. Only
+after retrieval and evidence quality improvements are complete.

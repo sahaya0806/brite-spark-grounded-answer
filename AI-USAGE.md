@@ -181,3 +181,28 @@ judgement.
 - Antigravity added regression test suites `TestApparentGapRegressions` and `TestConflictRenderingRegressions` in `tests/test_pipeline.py`.
 - The project team verified that all 329 tests pass across the entire suite and that the student question deterministically yields `INSUFFICIENT` without LLM overrides.
 
+---
+
+## Milestone 6 — Final Evaluation, Documentation, and Engineering Decisions
+
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind),
+  used for code implementation, bug fixes, evaluation execution, and documentation.
+- **Antigravity was used as a development and coding assistant only.** It did not
+  substitute for policy evidence. It did not assess evidence sufficiency. It did not
+  generate or modify policy content.
+- The 10-question final evaluation was run against the real supplied policy corpus
+  (`data/raw/policy_manual.md`) using the live end-to-end CLI (`python -m src ask`).
+- Results were recorded honestly. Two failures (Q5, Q10) were documented with root-cause
+  explanations. No question-specific rules were added to improve evaluation scores.
+- No policy answers were hardcoded.
+- `data/raw/policy_manual.md` was not modified at any point during this phase.
+- Antigravity assisted with:
+  - Running all 10 evaluation questions programmatically and capturing outputs.
+  - Writing the `DECISIONS.md` entries for ADR-035 through ADR-038
+    (decision boundary, full tech stack rationale, scope cuts, future improvements).
+  - Updating `README.md` with the evaluation results table, limitations, and improvements.
+  - Updating this `AI-USAGE.md` file.
+  - Running `pytest` to confirm 333 tests pass.
+  - Committing and pushing the final documentation commit.
+- The project team reviewed all generated documentation for accuracy and consistency
+  with the implemented system before approving the commit.

@@ -10,18 +10,87 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
-**Milestone 6 — Grounded Answer Generation** ✅  
-**Milestone 5 — Evidence Evaluation and Decision Layer** ✅  
-**Milestone 4 — Hybrid Policy Retrieval** ✅  
-**Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅  
-**Milestone 2 — Markdown Policy Ingestion** ✅  
+All 6 milestones are implemented and the 10-question final evaluation has been completed.
+
+**Milestone 6 — Grounded Answer Generation** ✅
+**Milestone 5 — Evidence Evaluation and Decision Layer** ✅
+**Milestone 4 — Hybrid Policy Retrieval** ✅
+**Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅
+**Milestone 2 — Markdown Policy Ingestion** ✅
 **Milestone 1 — Project Foundation** ✅
 
-The end-to-end pipeline is fully implemented:
-1. **Ingestion:** 137 authoritative clauses extracted with source line tracking.
-2. **Retrieval:** Hybrid vector (FAISS + OpenAI `text-embedding-3-small`) and lexical (BM25Okapi) retrieval with Reciprocal Rank Fusion.
-3. **Evidence Evaluation:** 3-way deterministic decision (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) with numeric/obligation conflict detection and gap analysis.
-4. **Answer Generation:** Grounded plain-language synthesis via GPT-4o mini with strict clause citations for supported questions, and deterministic refusal/conflict reporting for non-supported questions.
+## Evaluation
+
+The following 10 questions were run against the real supplied policy corpus.
+No answers were hardcoded. Results are recorded honestly, including failures.
+
+| # | Question | Expected | Actual | Result |
+|---|----------|----------|--------|--------|
+| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | ✅ PASS |
+| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED | ✅ PASS |
+| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING | ✅ PASS |
+| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT | ✅ PASS |
+| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED | ❌ FAIL |
+| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING | ✅ PASS |
+| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
+| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | ❌ FAIL |
+
+**Total questions: 10 | Passed: 8 | Failed: 2 | Pass rate: 80%**
+
+Test suite (333 automated offline tests): **333 passed, 0 failed**.
+
+## What the System Does
+
+```
+Question
+  → Hybrid Retrieval (FAISS semantic + BM25 lexical, merged via RRF)
+  → Evidence Evaluation (deterministic signal extraction, 3-way decision)
+  ├── SUPPORTED    → GPT-4o mini grounded answer + exact clause citations
+  ├── INSUFFICIENT → Deterministic refusal + gap explanation
+  └── CONFLICTING  → Deterministic conflict report (surfacing both provisions)
+```
+
+The system:
+- Reads the supplied Markdown policy corpus directly without modification.
+- Parses the corpus into 137 identifiable policy clauses with source line tracking.
+- Retrieves at clause level (not arbitrary chunks) preserving citation accuracy.
+- Uses FAISS for semantic retrieval and BM25 for lexical retrieval.
+- Combines results using Reciprocal Rank Fusion (RRF).
+- Evaluates evidence sufficiency deterministically — separate from retrieval.
+- Supports SUPPORTED, INSUFFICIENT, and CONFLICTING outcomes.
+- Detects the known contradiction between §4.3.2 (10 calendar days) and §9.1.4 (30 calendar days).
+- Provides clause-level citations with exact source line numbers.
+- Uses GPT-4o mini for natural-language answer construction on SUPPORTED cases only.
+- Refuses instead of guessing when evidence is insufficient.
+- Surfaces both conflicting provisions when the manual contradicts itself.
+
+## Known Limitations
+
+- **Paraphrase sensitivity:** Different phrasings of the same question can retrieve
+  different clauses and produce different decisions (Q7 passes, Q10 fails for the
+  same gap about full-time students).
+- **Lexical signal precision:** The evidence evaluator uses vocabulary overlap
+  signals. This can score income-related clauses as sufficient for an income
+  disregard question when semantically they do not answer it (Q5 failure).
+- **Corpus-specific design:** The system is calibrated for the supplied Calder
+  County Household Support Program corpus and is not a general document QA system.
+- **No multi-clause reasoning:** Questions requiring reasoning across two or more
+  distant, non-adjacent clauses may not be handled correctly.
+- **No web UI:** CLI only. Intended for demonstration and evaluation.
+
+## Future Improvements
+
+1. **Improve retrieval/evidence performance** — especially for paraphrased questions,
+   apparent gaps, cross-reference reasoning, and difficult multi-clause questions.
+2. **Expand evaluation coverage** — 30–50 questions covering all 12 policy parts,
+   adversarial phrasings, and edge cases.
+3. **Better citation navigation** — source-line highlighting for quick verification.
+4. **Simple UI** — a minimal Gradio/Streamlit interface for non-technical stakeholders,
+   only after retrieval and evidence quality improvements are complete.
+
+
 
 ## Local Setup
 
