@@ -12,12 +12,12 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 All 6 milestones are implemented and the 10-question final evaluation has been completed.
 
-**Milestone 6 — Grounded Answer Generation** ✅
-**Milestone 5 — Evidence Evaluation and Decision Layer** ✅
-**Milestone 4 — Hybrid Policy Retrieval** ✅
-**Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅
-**Milestone 2 — Markdown Policy Ingestion** ✅
-**Milestone 1 — Project Foundation** ✅
+**Milestone 6 — Grounded Answer Generation** 
+**Milestone 5 — Evidence Evaluation and Decision Layer** 
+**Milestone 4 — Hybrid Policy Retrieval** 
+**Milestone 3 — Clause-Level Parsing and Structured Clause Store** 
+**Milestone 2 — Markdown Policy Ingestion** 
+**Milestone 1 — Project Foundation** 
 
 ## Evaluation
 
@@ -26,16 +26,16 @@ No answers were hardcoded. Results are recorded honestly, including failures.
 
 | # | Question | Expected | Actual | Result |
 |---|----------|----------|--------|--------|
-| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | ✅ PASS |
-| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED | ✅ PASS |
-| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING | ✅ PASS |
-| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT | ✅ PASS |
-| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED | ❌ FAIL |
-| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING | ✅ PASS |
-| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | ❌ FAIL |
+| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | **PASS** |
+| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED |  **PASS** |
+| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING |  **PASS** |
+| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT |  **PASS** |
+| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED |  **FAIL** |
+| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING |  **PASS** |
+| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT |  **PASS** |
+| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT |  **PASS** |
+| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT |  **PASS** |
+| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | **FAIL** |
 
 **Total questions: 10 | Passed: 8 | Failed: 2 | Pass rate: 80%**
 
