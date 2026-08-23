@@ -186,10 +186,14 @@ class FakeEmbeddingProvider:
         Map a text to a reproducible unit vector.
 
         Uses a seeded PRNG keyed on the text content so identical texts
-        always produce identical vectors.
+        always produce identical vectors.  Uses hashlib (not Python's
+        built-in hash()) to avoid Python's PYTHONHASHSEED randomization.
         """
-        # Seed the generator with a hash of the text for determinism
-        text_seed = int(abs(hash(text)) % (2**31))
+        import hashlib
+        # MD5 is used here purely for deterministic seeding — not security.
+        digest = hashlib.md5(text.encode("utf-8"), usedforsecurity=False).digest()
+        # Use first 4 bytes as a 32-bit seed
+        text_seed = int.from_bytes(digest[:4], "big")
         rng = np.random.default_rng(text_seed)
         vec = rng.standard_normal(self._dim).astype(np.float32)
         norm = np.linalg.norm(vec)

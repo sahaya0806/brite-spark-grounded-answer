@@ -10,14 +10,16 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
+**Milestone 5 — Evidence Evaluation and Decision Layer** ✅  
 **Milestone 4 — Hybrid Policy Retrieval** ✅  
 **Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅  
 **Milestone 2 — Markdown Policy Ingestion** ✅  
 **Milestone 1 — Project Foundation** ✅
 
-The policy corpus is fully parsed into 137 structured clauses and indexed
-for hybrid retrieval. Evidence evaluation, answer generation, and citations
-are not yet implemented.
+The policy corpus is fully parsed into 137 structured clauses, indexed
+for hybrid retrieval, and evaluated by the evidence evaluation layer for
+three-way decision status (SUPPORTED, INSUFFICIENT, CONFLICTING).
+Answer generation and citations are not yet implemented.
 
 ## Local Setup
 
@@ -89,7 +91,7 @@ python -m src ask "What is the resource limit?"
 pytest
 ```
 
-Expected output: all 205 tests pass.
+Expected output: all 286 tests pass.
 
 ## Ingestion API
 
@@ -160,7 +162,27 @@ for r in results:
 | Lexical | BM25Okapi (`rank-bm25`) |
 | Merging | Reciprocal Rank Fusion (k=60) |
 
-## Project Structure            # CLI entry point (Typer)
+## Evidence Evaluation API
+
+The evidence evaluation layer is in `src/evidence/`. It evaluates retrieved clauses to make a 3-way decision (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) without generating ungrounded answers.
+
+```python
+from src.evidence import EvidenceEvaluator, DecisionStatus
+
+evaluator = EvidenceEvaluator()
+decision = evaluator.evaluate("How many days to report a change?", results)
+
+print(decision.status)              # DecisionStatus.CONFLICTING
+print(decision.rationale)           # Detected 1 conflicting provision(s)...
+print(decision.recommended_action)  # "surface_conflict"
+print(decision.supporting_clause_ids)  # ('4.3.2', '9.1.4')
+```
+
+## Project Structure
+
+```text
+src/
+  app.py            # CLI entry point (Typer)
   ingestion/
     loader.py       # load_policy_document() → PolicyDocument
     inspector.py    # inspect_markdown() → MarkdownInspection
@@ -172,7 +194,11 @@ for r in results:
     lexical.py      # LexicalIndex (BM25 keyword search)
     hybrid.py       # HybridRetriever (RRF merging) + RetrieverConfig
     models.py       # RetrievalResult
-  evidence/         # Evidence sufficiency evaluation — not yet implemented
+  evidence/
+    models.py       # DecisionStatus, EvidenceItem, ConflictDetail, EvidenceDecision
+    scoring.py      # Signal extraction, numeric fact extraction, relevance scoring
+    contradiction.py# detect_conflicts() — topic & numeric conflict detector
+    evaluator.py    # EvidenceEvaluator — 3-way decision logic
   generation/       # Grounded answer construction — not yet implemented
   citation/         # Deterministic citation rendering — not yet implemented
   models/           # Shared Pydantic schemas — not yet implemented

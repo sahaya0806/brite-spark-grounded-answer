@@ -8,10 +8,14 @@ The Grounded Answer. It is updated incrementally as the project progresses.
 ## Tools Used
 
 ### Kiro (coding assistant)
-- Used for: code generation, file scaffolding, test writing, refactoring.
+- Used for: code generation, file scaffolding, test writing, refactoring (Milestones 1–4, initial Milestone 5 draft).
 - All generated code is reviewed by the project team before committing.
 - The team is responsible for verifying correctness, running tests, and
   making final implementation decisions.
+
+### Antigravity (coding assistant)
+- Used for: completing Milestone 5 implementation, adding edge-case tests,
+  refining models and evaluators, and updating architecture documentation.
 
 ### ChatGPT
 - Used for: architecture planning, reasoning about the RAG pipeline design,
@@ -128,3 +132,20 @@ judgement.
     reporting-deadline queries.
   - The apparent gap clause (§7.1.3) is retrievable.
   - The retriever does not generate answers or make refusal decisions.
+
+---
+
+## Milestone 5 — Evidence Evaluation and Decision Layer
+
+- Kiro generated the initial draft of the evidence evaluation modules
+  (`src/evidence/models.py`, `src/evidence/scoring.py`,
+  `src/evidence/contradiction.py`, `src/evidence/evaluator.py`,
+  `src/evidence/__init__.py`, and initial tests in `tests/test_evidence.py`).
+- Antigravity completed and refined the Milestone 5 implementation:
+  - Added input deduplication by `clause_id` and strict provenance validation in `src/evidence/evaluator.py`.
+  - Added the `supporting_clause_ids` convenience property in `src/evidence/models.py`.
+  - Fixed threshold calibration in `tests/test_evidence.py`.
+  - Added unit and edge case tests for multi-clause support, scope/applicability differentiation, deduplication, and hallucinated clause ID prevention (81 tests total in `test_evidence.py`).
+  - Drafted ADR-023 through ADR-027 in `DECISIONS.md`.
+  - Updated `README.md` with Evidence Evaluation API documentation.
+- The project team verified that all 286 tests pass across the entire suite, confirmed that evidence evaluation is strictly separated from retrieval, and verified the three-way decision behavior (`SUPPORTED`, `INSUFFICIENT`, `CONFLICTING`) on both synthetic and real-corpus test cases.

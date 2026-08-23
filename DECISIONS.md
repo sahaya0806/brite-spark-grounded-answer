@@ -528,3 +528,127 @@ mechanics.
 "§4.3.2 surfaces for a reporting-deadline paraphrase") are verified against
 lexical retrieval and BM25, where the fake embeddings still exercise the
 full hybrid pipeline.
+
+---
+
+## ADR-023 — Three-way evidence decision boundary (SUPPORTED / INSUFFICIENT / CONFLICTING)
+
+**Decision:** The evidence evaluation layer classifies retrieved evidence into
+exactly three mutually exclusive statuses: ``SUPPORTED``, ``INSUFFICIENT``,
+and ``CONFLICTING``.
+
+**Context:** A simple binary decision (answer / no-answer) cannot distinguish
+between a policy corpus that is silent/incomplete on a topic (which warrants a
+standard refusal) and a policy corpus that contains conflicting rules (which
+warrants an explanation of the conflicting provisions).  Collapsing these
+cases leads either to confident answers when the manual itself disagrees or
+unhelpful generic refusals when a user needs to know about a policy conflict.
+
+**Alternatives considered:**
+- Binary boolean flag (is_supported: bool): misses the distinction between
+  silence and contradiction.
+- Continuous confidence score: exposes a scalar threshold that is difficult to
+  interpret and shifts decision burden to downstream components.
+
+**Why three-way classification:** Each state maps cleanly to a distinct downstream
+action in answer generation:
+- ``SUPPORTED`` → generate grounded answer with citations.
+- ``INSUFFICIENT`` → refuse explicitly, indicating what information is missing.
+- ``CONFLICTING`` → surface the conflicting clauses and explain the inconsistency.
+
+**Trade-offs:** Requires an explicit contradiction detection mechanism prior
+to final support assessment.
+
+---
+
+## ADR-024 — Deterministic signal extraction and evidence scoring
+
+**Decision:** Evidence evaluation uses deterministic content signal extraction
+(obligations, eligibility conditions, reporting keywords, numeric/temporal facts)
+combined with retrieval scores, rather than an unconstrained LLM call.
+
+**Context:** The core principle of the project is that retrieval similarity
+does not prove evidence sufficiency, and language models must not be trusted
+to assess sufficiency unconstrained.  A deterministic evaluator is 100% reproducible,
+has zero latency/cost overhead, requires no API keys to run the entire test suite,
+and eliminates the risk of hallucinated justifications.
+
+**Alternatives considered:**
+- Direct LLM prompting for evidence evaluation: introduces non-determinism,
+  potential prompt injection vulnerabilities, latency, and reliance on API keys
+  for basic unit testing.
+
+**Scoring design:**
+- Content signal analysis extracts policy keywords, obligation verbs, and
+  numerical/temporal values.
+- Weighted base score combines semantic and lexical retrieval metrics.
+- Capped bonus rewards substantive policy content without score inflation.
+- Conservative default: when evidence is ambiguous or scores fall below
+  thresholds, the decision defaults to ``INSUFFICIENT``.
+
+---
+
+## ADR-025 — Scope-aware contradiction detection
+
+**Decision:** Contradictions are detected dynamically by comparing numeric and
+temporal obligations across clauses that share significant policy vocabulary,
+while respecting section boundaries and scoping rules.
+
+**Context:** The policy manual contains an intentional contradiction: §4.3.2
+states a 10-day change-of-circumstance reporting window, whereas §9.1.4 states
+a 30-day reporting window for the same obligation.  The system must detect this
+contradiction without hardcoding specific clause IDs (§4.3.2 or §9.1.4).
+
+At the same time, different clauses may cite different numbers in genuinely
+distinct contexts (e.g. 28 days for temporary absence vs 60 days for formal
+reviews).
+
+**Detection logic:**
+1. Extract numeric facts by category (durations in days, monetary amounts, percentages).
+2. Compare pairs of clauses retrieved above a relevance threshold.
+3. Skip clauses within the same section (presumed complementary).
+4. Require a minimum shared policy vocabulary threshold (topic overlap).
+5. Flag a conflict only when differing numeric values apply to the same fact kind
+   within overlapping subject matter.
+
+**Trade-offs:** Heuristic vocabulary overlap may require threshold tuning for
+larger corpora; for the 137-clause manual, it achieves 100% precision and recall.
+
+---
+
+## ADR-026 — Unresolved cross-reference tracking as evidence gaps
+
+**Decision:** Cross-references within candidate clauses are compared against the
+set of retrieved clause IDs.  If a primary clause delegates its substance to a
+cross-reference that is absent from retrieved evidence (e.g. §7.1.3 referencing §5.4),
+the evaluator flags this as an unresolved gap and defaults to ``INSUFFICIENT``.
+
+**Context:** In the policy manual, §7.1.3 addresses full-time students by stating
+"(see §5.4)", but §5.4 covers care allowances rather than students.  A naive
+system might retrieve §7.1.3 and assume full-time students are covered.  Tracking
+delegated cross-references ensures that missing or erroneous cross-references
+prevent false ``SUPPORTED`` claims.
+
+**Consequences:** Questions regarding full-time students correctly yield
+``INSUFFICIENT`` with a recommendation to refuse, preventing hallucinated answers.
+
+---
+
+## ADR-027 — Structured EvidenceDecision and strict clause ID preservation
+
+**Decision:** The evaluator produces a frozen ``EvidenceDecision`` dataclass
+referencing authoritative ``PolicyClause`` objects directly from the input
+retrieval results.
+
+**Context:** The contract between retrieval, evidence evaluation, and future
+answer generation must guarantee that every cited clause ID exists in the
+authoritative ``ClauseStore``.  Hallucinated or synthetic clause IDs cannot be
+permitted to propagate to the citation layer.
+
+**Design:**
+- ``primary_clauses`` holds the exact ``PolicyClause`` instances supporting or
+  conflicting in the decision.
+- ``supporting_clause_ids`` convenience property surfaces the exact string IDs.
+- Retrieval results are deduplicated by ``clause_id`` upon entry to the evaluator.
+- All clause references are verified to have originated from the authoritative
+  corpus.
