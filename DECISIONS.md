@@ -966,3 +966,46 @@ answer verification without reading the full document.
 **Priority 4 — Simple UI (last priority).**
 A minimal Gradio or Streamlit interface for non-technical stakeholder demos. Only
 after retrieval and evidence quality improvements are complete.
+
+---
+
+## ADR-039 — Temporal Policy Data Model (Day-2 Milestone 1)
+
+**Decision:** Extend the core `PolicyClause` dataclass with optional temporal metadata fields:
+`effective_from: date | None = None`, `effective_to: date | None = None`, and `source_document: str = "policy_manual.md"`.
+
+**Context:** Day 2 introduces Amendment No. 2026-01 (effective 1 March 2026), which modifies
+specific policy rules (such as earnings disregards, change reporting timeframes, income thresholds,
+and sanctions). A question must be answered according to the date of the claim/event being asked
+about. To support multiple temporal versions of a policy clause over time, the system needs
+first-class temporal metadata on clause records.
+
+**Why extend `PolicyClause` instead of creating a separate model:**
+- A single unified clause abstraction ensures all downstream components (retrieval indexing,
+  BM25, vector search, evidence evaluator, scoring, contradiction detection, and citation formatting)
+  can process original and amended clauses without rewriting or branching data pipelines.
+- Preserves dataclass immutability (`frozen=True`), equality semantics, and hashing behavior.
+
+**Selected Fields:**
+1. `effective_from: date | None`: First date on which this clause version is active (`None` for original base text).
+2. `effective_to: date | None`: Final date on which this clause version was active (`None` if open-ended / not superseded).
+3. `source_document: str`: Source identifier (`"policy_manual.md"` vs `"Amendment No. 2026-01.md"`).
+
+**Rejected Fields:**
+- `amendment_type` / `supersedes_clause_id` / `temporal_scope`: Over-engineering for a 2-document corpus.
+  The `(clause_id, effective_from, effective_to)` tuple completely and unambiguously represents version transitions.
+- String-based dates: Python `datetime.date` objects provide strict typing, reliable comparison, and formatting safety.
+
+**Representation of Original Base Clauses:**
+- Original clauses from `policy_manual.md` represent the consolidated text as at 31 December 2025.
+- We do NOT invent historical effective start dates for individual original clauses; they default to `effective_from = None` (valid since inception) and `effective_to = None` (valid until superseded).
+
+**Backward Compatibility:**
+- All new fields have default values.
+- Existing 137 clauses parsed from `policy_manual.md` automatically receive safe defaults without any callsite adjustments.
+- All existing Day-1 tests continue to pass with zero breaking changes.
+
+**Scope of Milestone 1:**
+- This milestone establishes *only* the data model representation.
+- It deliberately does NOT implement temporal filtering, amendment parsing, date-aware retrieval, evidence evaluation adjustments, or CLI `--date` options.
+

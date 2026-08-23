@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Sequence
 
@@ -88,7 +89,24 @@ class PolicyClause:
     end_line:
         1-indexed line number of the last non-empty line of this clause
         before the next clause begins (or end of section).
+    effective_from:
+        The date from which this clause version is in effect, or ``None``
+        if the clause has been in effect since the beginning of the
+        consolidated text (i.e. no known effective start date is required
+        for original corpus clauses).  Set to the amendment effective date
+        for clauses introduced or replaced by an amendment.
+    effective_to:
+        The last date on which this clause version is in effect, or ``None``
+        if the clause has not yet been superseded (open-ended).  Set to the
+        day before the replacement amendment's effective date for clauses
+        that are later superseded.
+    source_document:
+        Human-readable identifier of the source document from which this
+        clause was extracted.  Defaults to ``"policy_manual.md"`` for the
+        original consolidated manual.  Set to the amendment filename for
+        clauses introduced or replaced by an amendment.
     """
+    # --- Core clause identity and content (existing fields — unchanged) ---
     clause_id: str
     part_id: str
     part_title: str
@@ -100,6 +118,10 @@ class PolicyClause:
     source_path: Path
     start_line: int
     end_line: int
+    # --- Temporal metadata (new — all fields have backward-compatible defaults) ---
+    effective_from: date | None = None
+    effective_to: date | None = None
+    source_document: str = "policy_manual.md"
 
 
 # ---------------------------------------------------------------------------

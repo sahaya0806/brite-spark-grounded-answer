@@ -206,3 +206,20 @@ judgement.
   - Committing and pushing the final documentation commit.
 - The project team reviewed all generated documentation for accuracy and consistency
   with the implemented system before approving the commit.
+
+---
+
+## Day-2 Milestone 1 — Temporal Policy Data Model
+
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind).
+- **Process and Scope:**
+  - The existing architecture (parsers, stores, retrievers, evaluators, CLI, tests, and documentation) was inspected first to identify exact integration points.
+  - Antigravity assisted with extending the immutable `PolicyClause` dataclass in `src/ingestion/parser.py` with temporal metadata fields (`effective_from: date | None`, `effective_to: date | None`, `source_document: str = "policy_manual.md"`).
+  - Antigravity assisted with authoring `tests/test_temporal_model.py` containing 13 focused tests covering backwards compatibility, defaults, explicit and open-ended dates, source document recording, immutability, hashing, ClauseStore compatibility, RetrievalResult compatibility, and EvidenceEvaluator compatibility.
+  - Antigravity assisted with documenting ADR-039 in `DECISIONS.md` and updating `AI-USAGE.md`.
+- **Independent Verification:**
+  - All 346 tests (333 original + 13 new) were verified to pass offline using `pytest`.
+  - Verified that original 137 clauses automatically receive safe default temporal metadata without code or fixture modifications.
+  - Verified that neither `policy_manual.md` nor `Amendment No. 2026-01.md` was altered.
+  - Confirmed that temporal filtering, amendment parsing, date-aware retrieval, date-aware evidence evaluation, and CLI `--date` options were deliberately NOT implemented in this milestone.
+
