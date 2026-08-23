@@ -10,13 +10,14 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
+**Milestone 4 — Hybrid Policy Retrieval** ✅  
 **Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅  
 **Milestone 2 — Markdown Policy Ingestion** ✅  
 **Milestone 1 — Project Foundation** ✅
 
-The policy corpus is fully parsed into 137 structured, citable clauses.
-The RAG pipeline (retrieval, evidence evaluation, answer generation, citations)
-is not yet implemented.
+The policy corpus is fully parsed into 137 structured clauses and indexed
+for hybrid retrieval. Evidence evaluation, answer generation, and citations
+are not yet implemented.
 
 ## Local Setup
 
@@ -88,7 +89,7 @@ python -m src ask "What is the resource limit?"
 pytest
 ```
 
-Expected output: all 53 tests pass.
+Expected output: all 205 tests pass.
 
 ## Ingestion API
 
@@ -128,17 +129,49 @@ for clause in store.all():
     print(f"§{clause.clause_id}  {clause.text[:60]}")
 ```
 
-## Project Structure
+## Retrieval API
 
+The retrieval layer is in `src/retrieval/`. Tests use `FakeEmbeddingProvider`
+(no API key required). Production use requires `OPENAI_API_KEY`.
+
+```python
+from src.ingestion import load_policy_document, parse_clauses, ClauseStore
+from src.retrieval import HybridRetriever, RetrieverConfig
+from src.retrieval.embeddings import OpenAIEmbeddingProvider
+
+doc = load_policy_document("data/raw/policy_manual.md")
+store = ClauseStore(parse_clauses(doc))
+retriever = HybridRetriever.build(store.all(), OpenAIEmbeddingProvider())
+
+results = retriever.retrieve("How many days to report a change?", top_k=5)
+for r in results:
+    print(f"§{r.clause.clause_id}  rrf={r.combined_score:.4f}  sources={r.sources}")
+    print(f"  {r.clause.text[:80]}…")
 ```
-src/
-  app.py            # CLI entry point (Typer)
+
+| Env Variable | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | — | Required for production embeddings |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model |
+
+| Component | Implementation |
+|---|---|
+| Semantic | FAISS `IndexFlatIP` + OpenAI `text-embedding-3-small` |
+| Lexical | BM25Okapi (`rank-bm25`) |
+| Merging | Reciprocal Rank Fusion (k=60) |
+
+## Project Structure            # CLI entry point (Typer)
   ingestion/
     loader.py       # load_policy_document() → PolicyDocument
     inspector.py    # inspect_markdown() → MarkdownInspection
     parser.py       # parse_clauses() → list[PolicyClause]
     store.py        # ClauseStore — in-memory clause index
-  retrieval/        # Hybrid retrieval (semantic + BM25) — not yet implemented
+  retrieval/
+    embeddings.py   # EmbeddingProvider protocol + OpenAI / Fake implementations
+    vector.py       # VectorIndex (FAISS semantic search)
+    lexical.py      # LexicalIndex (BM25 keyword search)
+    hybrid.py       # HybridRetriever (RRF merging) + RetrieverConfig
+    models.py       # RetrievalResult
   evidence/         # Evidence sufficiency evaluation — not yet implemented
   generation/       # Grounded answer construction — not yet implemented
   citation/         # Deterministic citation rendering — not yet implemented

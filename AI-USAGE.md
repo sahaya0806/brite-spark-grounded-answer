@@ -102,3 +102,29 @@ judgement.
   §9.1.4) and the apparent gap (§7.1.3 → §5.4) are correctly preserved in
   the parsed output and are explicitly covered by tests.
 - All 125 tests were verified to pass before committing.
+
+---
+
+## Milestone 4 — Hybrid Policy Retrieval
+
+- Kiro assisted with implementing the retrieval package:
+  ``src/retrieval/models.py`` (``RetrievalResult``),
+  ``src/retrieval/embeddings.py`` (``EmbeddingProvider`` Protocol,
+  ``OpenAIEmbeddingProvider``, ``FakeEmbeddingProvider``),
+  ``src/retrieval/vector.py`` (``VectorIndex`` using FAISS),
+  ``src/retrieval/lexical.py`` (``LexicalIndex`` using BM25Okapi),
+  ``src/retrieval/hybrid.py`` (``HybridRetriever``, ``RetrieverConfig``,
+  RRF merging).
+- Kiro assisted with writing the test suite in ``tests/test_retrieval.py``
+  (80 tests across 9 groups covering tokeniser, embedding interface,
+  vector index, lexical index, hybrid API, deduplication, edge cases,
+  result model, and 20 real corpus integration tests).
+- Kiro assisted with updating DECISIONS.md (ADR-016 through ADR-022),
+  AI-USAGE.md, README.md, and ``.env.example``.
+- The project team verified that all 205 tests pass, reviewed the
+  implementation, and confirmed that:
+  - No OpenAI API key is required for the test suite.
+  - Both contradiction clauses (§4.3.2 and §9.1.4) are reachable for
+    reporting-deadline queries.
+  - The apparent gap clause (§7.1.3) is retrievable.
+  - The retriever does not generate answers or make refusal decisions.

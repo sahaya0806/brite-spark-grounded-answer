@@ -377,3 +377,154 @@ than a character offset or a hash.
 edited.  The source file must not be edited (as required by the project rules).
 The citation layer (Milestone 7) can use these line numbers to display
 exact source locations.
+
+---
+
+## ADR-016 — Clause-level retrieval, not arbitrary chunking
+
+**Decision:** The retrieval unit is the ``PolicyClause`` record produced by
+the Milestone 3 parser.  The corpus is NOT split into fixed-size token chunks.
+
+**Context:** The challenge requires clause-level citations.  If we chunked
+the policy into 500-token windows, a retrieved chunk might span parts of two
+clauses, making it impossible to cite a specific provision.  With 137 clauses
+averaging ~212 characters each, chunking provides no benefit and destroys
+citation accuracy.
+
+**Trade-offs:** A long clause (e.g. §6.4.1 with 7 sub-items plus a table)
+is retrieved as a single unit.  This is correct: the clause is the citable
+policy provision, and its full text is needed for evidence evaluation.
+
+---
+
+## ADR-017 — Hybrid retrieval (semantic + BM25)
+
+**Decision:** Use both a semantic (embedding) index and a BM25 lexical index,
+merged by Reciprocal Rank Fusion.
+
+**Context:** The policy corpus contains both natural-language provisions and
+precise legal/policy vocabulary.  Neither retrieval method alone covers both:
+
+- Semantic retrieval handles paraphrased questions ("how many days do I have
+  to tell the office?") that would fail exact-term matching.
+- BM25 retrieval handles queries containing exact policy terms, numbers,
+  dates, clause IDs, and specific vocabulary that semantic search may miss.
+
+**Why hybrid:** The combination is strictly better than either method alone
+for the range of question types expected in the evaluation set.
+
+---
+
+## ADR-018 — OpenAI text-embedding-3-small as the production embedding model
+
+**Decision:** Use OpenAI's ``text-embedding-3-small`` model in production.
+
+**Context:** The project already depends on the OpenAI SDK (for answer
+generation in a later milestone).  ``text-embedding-3-small`` is OpenAI's
+current small, cost-effective embedding model with strong performance on
+English policy text.  No additional dependency is required.
+
+**Alternatives considered:**
+- ``sentence-transformers`` (all-MiniLM-L6-v2): already in requirements.txt,
+  would work offline.  However, using two different embedding ecosystems
+  (OpenAI for generation + sentence-transformers for embeddings) is more
+  complex than using OpenAI consistently.  Sentence Transformers remain in
+  requirements.txt for potential future use.
+- ``text-embedding-ada-002``: older model, superseded by 3-small.
+
+**Configuration:** The model name is read from the ``OPENAI_EMBEDDING_MODEL``
+environment variable, defaulting to ``"text-embedding-3-small"``.
+
+**Offline testing:** The ``FakeEmbeddingProvider`` allows the full test suite
+to run without an API key.
+
+---
+
+## ADR-019 — FAISS flat inner-product index for vector search
+
+**Decision:** Use ``faiss.IndexFlatIP`` (flat exact search, inner product)
+over L2-normalised vectors, giving exact cosine similarity search.
+
+**Context:** The corpus is 137 clauses.  Approximate nearest-neighbour
+indexes (IVF, HNSW, etc.) are designed for millions of vectors.  A flat
+exact index is the simplest, most correct implementation at this scale and
+has negligible latency (microseconds for 137 vectors).
+
+**Why FAISS rather than pure NumPy:** FAISS is already in requirements.txt
+and provides a standard, well-tested interface.  NumPy cosine search would
+also be correct at this size; FAISS was chosen for consistency with the
+original project plan.
+
+**Trade-offs:** If the corpus grew to tens of thousands of clauses, switching
+to an approximate index would be straightforward (just change the index type).
+
+---
+
+## ADR-020 — rank-bm25 (BM25Okapi) for lexical retrieval
+
+**Decision:** Use the ``rank-bm25`` library's ``BM25Okapi`` implementation.
+
+**Context:** ``rank-bm25`` is already in requirements.txt.  BM25Okapi is the
+standard BM25 variant used in information retrieval research.  No additional
+dependency is needed.
+
+**Tokeniser design:** The tokeniser preserves numbers, monetary values,
+percentages, and dotted clause IDs as single tokens.  Standard stop-word
+removal is intentionally omitted because policy vocabulary — "must", "may",
+"not", "no" — carries legal meaning that must not be discarded.
+
+**Score normalisation:** BM25Okapi scores are unbounded.  Within each result
+set, scores are normalised to [0, 1] by dividing by the maximum score.
+
+---
+
+## ADR-021 — Reciprocal Rank Fusion (RRF) for hybrid merging
+
+**Decision:** Use RRF (Cormack, Clarke, Buettcher, 2009) to merge semantic
+and lexical candidates.
+
+**Formula:** RRF(d) = Σᵢ 1 / (k + rankᵢ)  with k = 60 (standard default).
+
+**Context:** Semantic cosine scores ∈ [0, 1] and normalised BM25 scores ∈
+[0, 1] cannot be summed directly — their distributions differ.  RRF depends
+only on rank position, not score magnitude, making it scale-independent.
+
+**Alternatives considered:**
+- Weighted sum of normalised scores: requires calibration of weights;
+  the correct weights depend on query type, which we cannot know in advance.
+- Linear combination with equal weights: implicitly assumes both methods have
+  similar score distributions; not true for BM25 vs cosine.
+
+**Parameters:** ``rrf_k=60`` is the standard value from the original paper.
+``semantic_top_k=lexical_top_k=final_top_k=10`` are sensible defaults for
+137 clauses.  All are configurable via ``RetrieverConfig``.
+
+**Why RRF scores are NOT answer confidence:** RRF scores reflect retrieval
+rank position only.  A high RRF score means "this clause ranked highly in
+one or both retrieval systems for this query."  It says nothing about whether
+the clause actually answers the question.  Evidence sufficiency is determined
+by the evidence evaluation layer (Milestone 5).
+
+---
+
+## ADR-022 — EmbeddingProvider Protocol for testability
+
+**Decision:** Define ``EmbeddingProvider`` as a Python ``Protocol`` and
+provide a ``FakeEmbeddingProvider`` for tests.
+
+**Context:** The test suite must run without an OpenAI API key.  If tests
+called the real OpenAI API they would be slow, fragile (network dependent),
+and expensive.  A Protocol decouples the vector index from the specific
+embedding backend.
+
+**``FakeEmbeddingProvider`` design:** Uses a deterministic hash-keyed PRNG
+to produce unit vectors.  Identical texts always produce identical vectors
+across Python sessions.  The fake has no semantic content — it is only used
+to verify API contracts, deduplication, score ordering, and retrieval
+mechanics.
+
+**Consequences:** Every test that involves embedding uses
+``FakeEmbeddingProvider``.  Tests that check real semantic quality (e.g.
+"§4.3.2 surfaces for a reporting-deadline paraphrase") are verified against
+lexical retrieval and BM25, where the fake embeddings still exercise the
+full hybrid pipeline.
