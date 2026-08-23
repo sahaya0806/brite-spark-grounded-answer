@@ -1009,3 +1009,48 @@ first-class temporal metadata on clause records.
 - This milestone establishes *only* the data model representation.
 - It deliberately does NOT implement temporal filtering, amendment parsing, date-aware retrieval, evidence evaluation adjustments, or CLI `--date` options.
 
+---
+
+## ADR-040 — Amendment Parsing and Structured Policy Versions (Day-2 Milestone 2)
+
+**Decision:** Implement a dedicated, separate parser module (`src/ingestion/amendment.py`) to parse
+`Amendment No. 2026-01.md` into structured `AmendmentDocument` and `AmendmentChange` records, with the
+ability to synthesize temporal `PolicyClause` representations without mutating the original manual.
+
+**Context:** Amendment No. 2026-01 modifies existing provisions (§4.3.2, §6.4.1(a), §6.6.1, §9.1.4, §10.5.2)
+and inserts a new provision (§10.5.3A) effective 1 March 2026. The policy manual itself is not a
+dynamically updated single-text file; it represents the historical consolidated manual as of 31 December 2025.
+The system must parse the amendment separately and generate citable, versioned clause records.
+
+**Why parse separately rather than rewrite `policy_manual.md`:**
+- Modifying `policy_manual.md` would destroy the historical corpus, making it impossible to correctly
+  answer questions about claims or events prior to 1 March 2026.
+- A fundamental legal/policy principle is that amendments are separate enactment instruments that
+  superimpose changes over a base text. Preserving both files verbatim maintains full auditability.
+
+**Structured Change Modeling:**
+- Changes are captured with explicit attributes: `target_clause_id`, `change_type`, `original_value`,
+  `amended_value`, `effective_from`, `effective_to`, `trigger_type`, `source_document`, and source lines.
+- Structured table rows (`TableRow`) are extracted for the §6.6.1 threshold changes, preserving exact
+  household sizes and dollar amounts.
+
+**Temporal Trigger Types (`TriggerType`):**
+- Paragraphs 1, 3, 4 of the amendment apply based on the **determination date** (`TriggerType.DETERMINATION_DATE`).
+- Paragraph 2 (change reporting period for §4.3.2 and §9.1.4) applies strictly based on the **date of the change of circumstances** (`TriggerType.CHANGE_OF_CIRCUMSTANCES_DATE`).
+- The parser records these trigger types as structured data rather than collapsing them or deciding
+  applicability prematurely.
+
+**Handling Alphanumeric Clause IDs (§10.5.3A):**
+- The new clause introduced after §10.5.3 has the identifier `10.5.3A`.
+- The amendment parser explicitly recognizes alphanumeric clause IDs and instantiates a full
+  `PolicyClause` record preserving Part 10 context, exact wording, and source provenance.
+
+**Alternatives Considered and Rejected:**
+- *Text-replacement preprocessing of the base manual:* Rejected because it permanently erases pre-amendment policy rules.
+- *Unstructured string diffing:* Rejected because regex and keyword extraction would lose the legal distinction between determination date and change of circumstances date.
+
+**Scope of Milestone 2:**
+- Implements parsing, data extraction, and PolicyClause generation.
+- Deliberately does NOT implement temporal filtering, claim-date selection, CLI `--date` options, or retrieval/evidence scoring changes.
+
+

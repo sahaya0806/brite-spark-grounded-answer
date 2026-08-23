@@ -223,3 +223,21 @@ judgement.
   - Verified that neither `policy_manual.md` nor `Amendment No. 2026-01.md` was altered.
   - Confirmed that temporal filtering, amendment parsing, date-aware retrieval, date-aware evidence evaluation, and CLI `--date` options were deliberately NOT implemented in this milestone.
 
+---
+
+## Day-2 Milestone 2 — Amendment Parsing and Structured Policy Versions
+
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind).
+- **Process and Scope:**
+  - The actual source amendment file (`data/raw/Amendment No. 2026-01.md`) was inspected directly against all Day-2 requirements.
+  - Antigravity assisted with implementing `src/ingestion/amendment.py` (`AmendmentDocument`, `AmendmentChange`, `TableRow`, `TransitionalProvision`, `TriggerType`, `ChangeType`, and `parse_amendment`).
+  - Implemented structured extraction for all 6 target provisions (§4.3.2, §6.4.1(a), §6.6.1, §9.1.4, §10.5.2, §10.5.3A), distinguishing `TriggerType.DETERMINATION_DATE` from `TriggerType.CHANGE_OF_CIRCUMSTANCES_DATE`.
+  - Added support for generating versioned, temporal `PolicyClause` records via `AmendmentDocument.create_amended_clauses()` without altering the base manual.
+  - Antigravity assisted with authoring `tests/test_amendment_parser.py` containing 22 focused tests.
+  - Antigravity assisted with documenting ADR-040 in `DECISIONS.md` and updating `AI-USAGE.md`.
+- **Independent Verification:**
+  - All 368 tests (346 previous + 22 new) were verified to pass offline via `pytest`.
+  - Verified that `data/raw/policy_manual.md` and `data/raw/Amendment No. 2026-01.md` remain completely unmodified.
+  - Confirmed that temporal filtering, claim-date selection, CLI `--date` options, retrieval algorithms, and evidence evaluation logic were deliberately NOT modified or implemented in this milestone.
+
+
