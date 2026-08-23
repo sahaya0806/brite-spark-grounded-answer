@@ -59,6 +59,26 @@ _RE_REPORTING = re.compile(
     re.IGNORECASE,
 )
 
+# Delegation / referral phrases
+_RE_DELEGATION_PHRASES = re.compile(
+    r'\b(addressed\s+separately|dealt\s+with\s+separately|covered\s+elsewhere|'
+    r'see\s+§|refer\s+to\s+§|set\s+out\s+in\s+§|except\s+in\s+the\s+case\s+of)\b',
+    re.IGNORECASE,
+)
+
+
+def _normalize_tokens(text: str) -> frozenset[str]:
+    """Tokenize text and include singular/plural stems for lexical matching."""
+    words = re.findall(r'\b[a-z0-9]+\b', text.lower())
+    base = set(words)
+    for w in words:
+        if len(w) > 3:
+            if w.endswith('s') and not w.endswith('ss'):
+                base.add(w[:-1])
+            else:
+                base.add(w + 's')
+    return frozenset(base)
+
 
 # ---------------------------------------------------------------------------
 # Extracted numeric fact
@@ -144,14 +164,14 @@ def extract_support_signals(
     if any(f.kind == "monetary" for f in facts):
         signals.append("contains_monetary_value")
 
-    # Query term overlap with clause text (content relevance)
-    clause_tokens = frozenset(re.findall(r'\w+', text))
+    # Query term overlap with clause text (content relevance with singular/plural support)
+    clause_tokens = _normalize_tokens(text)
     overlap = query_tokens & clause_tokens
     important_overlap = {
         t for t in overlap
         if len(t) > 3  # skip very short words
     }
-    if len(important_overlap) >= 3:
+    if len(important_overlap) >= 2:
         signals.append(f"lexical_overlap:{','.join(sorted(important_overlap)[:5])}")
 
     # Sub-items present (richer clause, more likely to be the primary rule)
@@ -191,13 +211,16 @@ def extract_gap_signals(
             f"unresolved_cross_refs:{','.join(unresolved)}"
         )
 
-    # Clause refers elsewhere for the main substance (incomplete answer)
-    ref_verbs = re.findall(
-        r'\b(see|refer|addressed|covered|under|within)\b',
-        clause.text, re.IGNORECASE,
-    )
-    if ref_verbs and clause.cross_references:
+    # Clause refers elsewhere for the main substance
+    if _RE_DELEGATION_PHRASES.search(clause.text):
         signals.append("delegates_to_cross_reference")
+    elif clause.cross_references:
+        ref_verbs = re.findall(
+            r'\b(see|refer|addressed|covered|under|within)\b',
+            clause.text, re.IGNORECASE,
+        )
+        if ref_verbs:
+            signals.append("delegates_to_cross_reference")
 
     return tuple(signals)
 
@@ -230,15 +253,7 @@ def compute_relevance_score(
     Compute a relevance score in [0, 1] for one evidence item.
 
     The score combines retrieval quality with the presence of positive
-    content signals.  It does NOT represent answer confidence.
-
-    Formula:
-        base  = weighted_average(semantic_score, lexical_score)
-        bonus = min(0.15, 0.05 * n_support_signals)
-        score = min(1.0, base + bonus)
-
-    The bonus rewards clauses that contain policy-substantive content
-    matching the question, but is capped to prevent inflation.
+    content signals. It does NOT represent answer confidence.
     """
     sem = result.semantic_score
     lex = result.lexical_score
@@ -253,10 +268,13 @@ def compute_relevance_score(
     else:
         base = 0.0
 
-    # Content signal bonus
+    # Content signal bonus: only reward if there is lexical overlap or genuine retrieval match
+    has_overlap = any(s.startswith("lexical_overlap") for s in support_signals)
     content_signals = [
         s for s in support_signals
         if not s.startswith("lexical_overlap")
     ]
-    bonus = min(0.15, 0.04 * len(content_signals))
+    # If there is no overlap, limit the bonus so boilerplate doesn't inflate irrelevant clauses
+    mult = 0.04 if has_overlap else 0.01
+    bonus = min(0.15, mult * len(content_signals))
     return min(1.0, base + bonus)

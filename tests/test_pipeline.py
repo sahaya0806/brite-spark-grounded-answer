@@ -328,6 +328,56 @@ class TestConflictRenderingRegressions:
         assert answer.refusal is False
         assert len(answer.citations) > 0
 
+    def test_external_concept_refusal_federal_district_court(self, pipeline):
+        """
+        An out-of-scope query referencing concepts not in the manual
+        ('Federal District Court') must be refused as INSUFFICIENT,
+        preventing the LLM from extrapolating from internal appeal rules.
+        """
+        q = "Can an applicant appeal a decision directly to the Federal District Court?"
+        answer = pipeline.ask(q)
+
+        assert answer.status == DecisionStatus.INSUFFICIENT
+        assert answer.refusal is True
+        assert "does not provide enough information" in answer.answer_text
+
+    def test_resource_limit_no_false_conflict(self, pipeline):
+        """
+        Resource limit question must not produce a false CONFLICTING decision
+        against monthly income thresholds (§6.6.1).
+        """
+        q = "What is the countable resource limit for a household?"
+        answer = pipeline.ask(q)
+
+        assert answer.status == DecisionStatus.SUPPORTED
+        assert answer.refusal is False
+        assert answer.conflicts == ()
+
+    def test_supervisor_referral_no_false_conflict(self, pipeline):
+        """
+        Supervisor referral question must not produce a false CONFLICTING decision
+        between suspension continuation (60 days, §10.2.3) and determination (90 days, §8.3.3).
+        """
+        q = "When must a determination be referred to a supervisor?"
+        answer = pipeline.ask(q)
+
+        assert answer.status == DecisionStatus.SUPPORTED
+        assert answer.refusal is False
+        assert answer.conflicts == ()
+
+    def test_identity_verification_no_false_conflict(self, pipeline):
+        """
+        Identity verification question must not produce a false CONFLICTING decision
+        between evidence deadlines (14 days, §8.2.3) and county presence (30 days, §3.3.1).
+        """
+        q = "What information must an applicant provide to verify identity?"
+        answer = pipeline.ask(q)
+
+        assert answer.status == DecisionStatus.SUPPORTED
+        assert answer.refusal is False
+        assert answer.conflicts == ()
+
+
 
 # ---------------------------------------------------------------------------
 # Original E2E suite — must not regress
