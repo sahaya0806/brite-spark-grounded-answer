@@ -1053,4 +1053,48 @@ The system must parse the amendment separately and generate citable, versioned c
 - Implements parsing, data extraction, and PolicyClause generation.
 - Deliberately does NOT implement temporal filtering, claim-date selection, CLI `--date` options, or retrieval/evidence scoring changes.
 
+---
+
+## ADR-041 — Deterministic Temporal Applicability and Policy Version Selection (Day-2 Milestone 3)
+
+**Decision:** Implement a dedicated `TemporalApplicabilityResolver` in `src/temporal/` that evaluates
+temporal applicability rules programmatically against an explicit `TemporalContext` (`determination_date` vs `change_of_circumstances_date`) without LLM involvement or date guessing.
+
+**Context:** Amendment No. 2026-01 introduces temporal branching where different provisions depend on
+different date types (determination date under §5.1 vs change of circumstances date under §5.2). To answer
+questions reliably for a specific claim date, the system needs a deterministic mechanism to resolve which
+policy clause version is active.
+
+**Why Temporal Applicability is a Separate Layer:**
+- Decoupling temporal version selection from search indexing (BM25/vector) and contradiction detection
+  ensures each component maintains a single, clear responsibility.
+- The resolver operates strictly on structured policy/amendment metadata, making applicability 100%
+  reproducible, explainable, and testable without network calls or API costs.
+
+**Why Determination Date and Change of Circumstances Date are Separate:**
+- The amendment explicitly distinguishes between the date a decision is made and the date a household's
+  facts change. For example, a determination made on 15 March 2026 for a change that occurred on 15 February
+  2026 applies the amended earnings disregard ($175) but the original change reporting deadline (10 days).
+- Collapsing these into a single date parameter would violate the transitional rules of §5.1 and §5.2.
+
+**Refusal vs Guessing Boundary (Where We Draw the Line):**
+- *The system resolves a version when:* the clause is unamended, OR when the specific date type required
+  by the amendment is explicitly supplied in `TemporalContext`.
+- *The system refuses (TEMPORAL_CONTEXT_REQUIRED) when:* an amended clause is evaluated and the caller
+  has not provided the required date type (e.g. asking for §4.3.2 with only a determination date, or with
+  no date context at all).
+- *No date guessing:* The system must never silently assume "today" or substitute one date type for another,
+  as doing so risks advising claimants on the wrong legal obligations.
+
+**Why Temporal Versions are Not Contradictions:**
+- §4.3.2 (10 days) and amended §4.3.2 (14 days) are not a contemporaneous contradiction; they are different
+  temporal expressions of the same rule active during different periods.
+- Resolving the applicable version temporally before evidence evaluation prevents false contradiction
+  signals across time periods.
+
+**Scope of Milestone 3:**
+- Implements `TemporalContext`, `TemporalResolution`, `ResolutionStatus`, and `TemporalApplicabilityResolver`.
+- Deliberately does NOT implement CLI `--date` options, retrieval filtering changes, or LLM prompt adjustments.
+
+
 

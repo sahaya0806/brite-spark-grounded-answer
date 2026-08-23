@@ -240,4 +240,25 @@ judgement.
   - Verified that `data/raw/policy_manual.md` and `data/raw/Amendment No. 2026-01.md` remain completely unmodified.
   - Confirmed that temporal filtering, claim-date selection, CLI `--date` options, retrieval algorithms, and evidence evaluation logic were deliberately NOT modified or implemented in this milestone.
 
+---
+
+## Day-2 Milestone 3 — Temporal Applicability / Policy Version Selection
+
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind).
+- **Process and Scope:**
+  - Designed and implemented the temporal applicability layer in `src/temporal/`:
+    - `src/temporal/models.py` (`TemporalContext`, `ResolutionStatus`, `TemporalResolution`).
+    - `src/temporal/resolver.py` (`TemporalApplicabilityResolver`).
+    - `src/temporal/__init__.py`.
+  - Implemented strict temporal trigger enforcement ensuring `determination_date` and `change_of_circumstances_date` are never confused or silently substituted.
+  - Implemented explicit refusal with `TEMPORAL_CONTEXT_REQUIRED` when required date context is absent, avoiding silent date guessing or "today" assumptions.
+  - Antigravity assisted with authoring `tests/test_temporal_resolver.py` containing 25 comprehensive unit and boundary tests.
+  - Antigravity assisted with documenting ADR-041 in `DECISIONS.md` and updating `AI-USAGE.md`.
+- **Independent Verification:**
+  - All 393 tests (368 previous + 25 new) were verified to pass offline via `pytest`.
+  - Verified that determination-date and change-of-circumstances-date provisions resolve independently and accurately across pre- and post-amendment dates.
+  - Verified that unamended clauses remain active across all dates without context requirement.
+  - Confirmed that CLI `--date` options, retrieval pipeline filtering, and LLM prompt modifications were deliberately NOT implemented in this milestone.
+
+
 
