@@ -8,15 +8,31 @@
 
 The Grounded Answer is a CLI-based policy question-answering assistant. Given a plain-language question, it retrieves relevant clauses from a supplied policy manual, evaluates whether the evidence actually supports a definitive answer, and either produces a grounded, cited response or explicitly refuses when the policy does not settle the matter. Every substantive claim in an answer is traceable to a specific policy clause. The system deliberately separates retrieval, evidence sufficiency evaluation, and answer generation to avoid the dangerous failure mode of a fluent-but-unsupported response.
 
+## Repository Branches
+
+- **`main` (Git tag: `ogproj`):** Baseline Day-1 implementation. Evaluates queries strictly against the original 2025 Consolidated Policy Manual.
+- **`surprise-challenge` (Current branch):** Day-2 implementation. Introduces deterministic temporal policy grounding, Amendment No. 2026-01 parsing, and CLI `--date` support.
+
+To switch branches:
+```bash
+# Switch to the Day-2 Surprise Challenge branch (current)
+git checkout surprise-challenge
+
+# Switch to the original Day-1 baseline branch
+git checkout main
+```
+
+---
+
 ## Current Status
 
 All Day-1 milestones and Day-2 surprise challenge milestones are implemented and verified.
 
-- **Day-1 Milestone 1–6 (Core Grounded QA Pipeline)** ✅
-- **Day-2 Milestone 1 (Temporal Policy Data Model)** ✅
-- **Day-2 Milestone 2 (Amendment Parsing & Structured Policy Versions)** ✅
-- **Day-2 Milestone 3 (Deterministic Temporal Applicability Layer)** ✅
-- **Day-2 Milestone 4 (Temporal Filter, Pipeline & CLI Integration)** ✅
+- **Day-1 Milestones 1–6:** Core Grounded QA Pipeline [COMPLETE]
+- **Day-2 Milestone 1:** Temporal Policy Data Model [COMPLETE]
+- **Day-2 Milestone 2:** Amendment Parsing & Structured Policy Versions [COMPLETE]
+- **Day-2 Milestone 3:** Deterministic Temporal Applicability Layer [COMPLETE]
+- **Day-2 Milestone 4:** Temporal Filter, Pipeline & CLI Integration [COMPLETE]
 
 ---
 
@@ -168,16 +184,16 @@ No answers were hardcoded. Results are recorded honestly, including failures.
 
 | # | Question | Expected | Actual | Result |
 |---|----------|----------|--------|--------|
-| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | ✅ PASS |
-| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED | ✅ PASS |
-| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING | ✅ PASS |
-| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT | ✅ PASS |
-| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED | ❌ FAIL |
-| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING | ✅ PASS |
-| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT | ✅ PASS |
-| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | ❌ FAIL |
+| 1 | What information must an applicant provide? | SUPPORTED | SUPPORTED | PASS |
+| 2 | What evidence is required to establish an applicant's identity, residence, income, and resources? | SUPPORTED | SUPPORTED | PASS |
+| 3 | What are the recipient's obligations to report changes in circumstances? | Not specified | CONFLICTING | PASS |
+| 4 | What income threshold is used when assessing eligibility? | Not specified | INSUFFICIENT | PASS |
+| 5 | What income can be disregarded when calculating entitlement? | Not specified | SUPPORTED | FAIL |
+| 6 | How many days does a recipient have to report a change? | CONFLICTING | CONFLICTING | PASS |
+| 7 | What is the policy for full-time students? | INSUFFICIENT | INSUFFICIENT | PASS |
+| 8 | What is the policy for a household that owns three electric vehicles? | INSUFFICIENT | INSUFFICIENT | PASS |
+| 9 | Does the program provide a special benefit for households affected by flooding? | INSUFFICIENT | INSUFFICIENT | PASS |
+| 10 | What rule applies to full-time students under the policy? | INSUFFICIENT | SUPPORTED | FAIL |
 
 **Total questions: 10 | Passed: 8 | Failed: 2 | Pass rate: 80%**
 
