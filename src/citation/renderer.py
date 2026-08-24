@@ -11,22 +11,31 @@ import re
 from src.ingestion.parser import PolicyClause
 
 
-# Pattern matching §N.N or §N.N.N (with optional surrounding brackets)
-_RE_CITATION = re.compile(r'\[?§(\d+\.\d+(?:\.\d+)?)\]?')
+# Pattern matching §N.N, §N.N.N, or §N.N.NA (with optional surrounding brackets)
+_RE_CITATION = re.compile(r'\[?§(\d+\.\d+(?:\.\d+)?[A-Z]?)\]?')
 
-# Pattern matching "clause N.N.N"
-_RE_CLAUSE_WORD = re.compile(r'\bclause\s+(\d+\.\d+(?:\.\d+)?)\b', re.IGNORECASE)
+# Pattern matching "clause N.N.N" or "clause N.N.NA"
+_RE_CLAUSE_WORD = re.compile(r'\bclause\s+(\d+\.\d+(?:\.\d+)?[A-Z]?)\b', re.IGNORECASE)
 
 
 def format_clause_citation(clause: PolicyClause) -> str:
     """
-    Format a full verifiable citation for a PolicyClause including source line numbers.
+    Format a full verifiable citation for a PolicyClause including source line numbers
+    and amendment provenance if applicable.
 
-    Example: "§4.3.2, line 200" or "§6.4.1, lines 310–325"
+    Example: "§4.3.2, line 200" or "§6.4.1, line 14 (Amendment No. 2026-01)"
     """
     if clause.start_line == clause.end_line:
-        return f"§{clause.clause_id}, line {clause.start_line}"
-    return f"§{clause.clause_id}, lines {clause.start_line}–{clause.end_line}"
+        line_part = f"line {clause.start_line}"
+    else:
+        line_part = f"lines {clause.start_line}–{clause.end_line}"
+
+    amendment_part = ""
+    if clause.source_document != "policy_manual.md":
+        doc_label = clause.source_document.removesuffix(".md")
+        amendment_part = f" ({doc_label})"
+
+    return f"§{clause.clause_id}, {line_part}{amendment_part}"
 
 
 def format_short_citation(clause: PolicyClause | str) -> str:

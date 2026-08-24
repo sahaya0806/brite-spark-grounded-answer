@@ -122,8 +122,13 @@ def _are_facts_compatible(kind: str, text_a: str, text_b: str) -> bool:
         return False
 
     elif kind == "percentage":
-        # Percentages only compete if they share subject context
-        return True
+        # Domain 1: Sanction reduction percentages
+        if "sanction" in ta and "sanction" in tb:
+            return True
+        # Domain 2: Overpayment recovery deduction percentages
+        if ("recovery" in ta or "overpayment" in ta) and ("recovery" in tb or "overpayment" in tb):
+            return True
+        return False
 
     return False
 

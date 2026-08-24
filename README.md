@@ -152,14 +152,24 @@ supplied by the Brite Spark organisers as a Markdown file.
 # Show system status
 python -m src info
 
-# Ask a question (requires OPENAI_API_KEY)
+# Ask a standard question (requires OPENAI_API_KEY)
 python -m src ask "What is the resource limit for a household?"
 
-# Test contradiction handling
-python -m src ask "How many days does a recipient have to report a change?"
+# Ask a date-aware question (Day 2 — Amendment No. 2026-01):
+# Pre-amendment date (evaluates against 2025 consolidated manual):
+python -m src ask "How many days does a recipient have to report a change?" --date 2026-02-20
 
-# Test gap/refusal handling
-python -m src ask "What is the policy for full-time students?"
+# Post-amendment date (evaluates against Amendment No. 2026-01):
+python -m src ask "How many days does a recipient have to report a change?" --date 2026-04-20
+
+# Pre-amendment earnings disregard ($120/month):
+python -m src ask "What is the earnings disregard?" --date 2026-02-20
+
+# Post-amendment earnings disregard ($175/month):
+python -m src ask "What is the earnings disregard?" --date 2026-04-20
+
+# Date-sensitive question without --date (safely refuses and prompts for date):
+python -m src ask "How many days does a recipient have to report a change?"
 ```
 
 ## Running the Test Suite
@@ -170,7 +180,7 @@ The test suite runs **100% offline** without requiring an OpenAI API key or netw
 pytest
 ```
 
-Expected output: **all 318 tests pass** (in under 3 seconds).
+Expected output: **all 409 tests pass** (in under 8 seconds).
 
 ## End-to-End Pipeline API
 

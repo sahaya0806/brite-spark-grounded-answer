@@ -1,7 +1,7 @@
-"""
-Temporal applicability and policy version resolution package.
-"""
-
+from src.temporal.filter import (
+    TemporalFilter,
+    TemporalFilterResult,
+)
 from src.temporal.models import (
     ResolutionStatus,
     TemporalContext,
@@ -14,4 +14,7 @@ __all__ = [
     "TemporalContext",
     "TemporalResolution",
     "TemporalApplicabilityResolver",
+    "TemporalFilter",
+    "TemporalFilterResult",
 ]
+

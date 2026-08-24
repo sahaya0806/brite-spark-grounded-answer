@@ -260,5 +260,26 @@ judgement.
   - Verified that unamended clauses remain active across all dates without context requirement.
   - Confirmed that CLI `--date` options, retrieval pipeline filtering, and LLM prompt modifications were deliberately NOT implemented in this milestone.
 
+---
+
+## Day-2 Milestone 4 — Temporal Filter + Pipeline + CLI Integration
+
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind).
+- **Process and Scope:**
+  - Implemented `src/temporal/filter.py` (`TemporalFilter`, `TemporalFilterResult`).
+  - Integrated `TemporalFilter` into `PolicyQAPipeline` (`src/pipeline.py`) positioned between `HybridRetriever` and `EvidenceEvaluator`.
+  - Updated `src/app.py` to add CLI `--date / -d` argument with date validation (YYYY-MM-DD) and clean user-facing error reporting.
+  - Updated citation rendering (`src/citation/renderer.py`) to support alphanumeric clause IDs (e.g. `10.5.3A`) and format amendment provenance tags (e.g. `§4.3.2, line 18 (Amendment No. 2026-01)`).
+  - Updated percentage domain checking in `src/evidence/contradiction.py` to distinguish sanction percentages from overpayment recovery percentages.
+  - Authored `tests/test_temporal_pipeline.py` containing 16 unit and integration tests.
+  - Documented ADR-042 in `DECISIONS.md` and updated `AI-USAGE.md` and `README.md`.
+- **Independent Verification:**
+  - All 409 tests (393 previous + 16 new) pass offline via `pytest`.
+  - Verified live CLI execution across pre-amendment date (2026-02-20), post-amendment date (2026-04-20), and missing-date queries.
+  - Verified that historical contradiction (§4.3.2 10 days vs §9.1.4 30 days) is reported for 2026-02-20, whereas amended 14-day rule is reported as `SUPPORTED` for 2026-04-20.
+  - Verified that date-sensitive queries without `--date` return an explicit refusal explaining that a date parameter is required.
+  - Verified that unamended queries continue to work normally without a date parameter.
+
+
 
 

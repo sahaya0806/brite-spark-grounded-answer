@@ -1096,5 +1096,51 @@ policy clause version is active.
 - Implements `TemporalContext`, `TemporalResolution`, `ResolutionStatus`, and `TemporalApplicabilityResolver`.
 - Deliberately does NOT implement CLI `--date` options, retrieval filtering changes, or LLM prompt adjustments.
 
+---
+
+## ADR-042 — Temporal Filter, Pipeline Integration, and CLI Date Support (Day-2 Milestone 4)
+
+**Decision:** Position a dedicated `TemporalFilter` between `HybridRetriever` and `EvidenceEvaluator`
+in the `PolicyQAPipeline`, and expose an explicit `--date YYYY-MM-DD` option in the CLI (`src/app.py`).
+
+**Context:** Having established the temporal data model (Milestone 1), amendment parser (Milestone 2),
+and applicability resolver (Milestone 3), the QA pipeline must now integrate these components so that
+questions are answered according to the date of the claim or determination being asked about.
+
+**Why Temporal Filtering is Positioned Between Retrieval and Evidence Evaluation:**
+- *Retrieval remains open:* Hybrid search (semantic + BM25) indexes all candidate provisions across both
+  the base manual and amendments (138 total clauses) to maximize recall.
+- *Temporal filter adapts candidates:* Before evidence evaluation begins, `TemporalFilter` resolves each
+  candidate clause to its applicable temporal version (original vs amended) based on `TemporalContext`.
+- *EvidenceEvaluator evaluates active policy only:* The evidence layer and contradiction detector operate
+  only on temporally active policy evidence, preventing false contradictions between historical and current rules.
+
+**Why Temporal Versions are Selected Before Contradiction Detection:**
+- In the base policy manual, §4.3.2 (10 calendar days) and §9.1.4 (30 calendar days) formed a genuine
+  internal policy contradiction.
+- Amendment No. 2026-01 aligned both provisions to 14 calendar days effective 1 March 2026.
+- For a query dated 2026-04-20, resolving both clauses to their amended 14-day versions prior to contradiction
+  detection allows the evaluator to correctly recognize that both clauses agree, producing a `SUPPORTED`
+  answer rather than a false conflict. Conversely, for a query dated 2026-02-20, resolving both to their
+  pre-amendment text correctly surfaces the historical contradiction.
+
+**Refusal Boundary for Missing Dates:**
+- If a question targets an unamended provision (e.g. §2.1.2 resource limit $4,000), the system resolves it
+  as `UNAMENDED` and answers normally without requiring a date.
+- If a question targets an amended provision (e.g. §4.3.2 reporting timeframe or §6.4.1 earnings disregard)
+  and the user supplies no `--date`, the system refuses with `[INSUFFICIENT]` and clearly explains that a
+  date parameter (`--date YYYY-MM-DD`) is required to determine which policy version applies.
+- The system never assumes "today", never defaults to 2026-03-01, and never guesses a policy version.
+
+**Citations with Provenance:**
+- Citations for base clauses format as `§4.3.2, line 200`.
+- Citations for amended clauses include the amendment identifier: `§4.3.2, line 18 (Amendment No. 2026-01)`.
+- Alphanumeric clause IDs introduced by amendments (e.g. `§10.5.3A`) are supported verbatim.
+
+**Backward Compatibility:**
+- The CLI command `python -m src ask "question"` continues to function for all standard queries.
+- Day-1 pipeline constructions without an amendment path continue to operate as pure base-corpus pipelines.
+
+
 
 
