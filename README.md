@@ -8,16 +8,32 @@
 
 The Grounded Answer is a CLI-based policy question-answering assistant. Given a plain-language question, it retrieves relevant clauses from a supplied policy manual, evaluates whether the evidence actually supports a definitive answer, and either produces a grounded, cited response or explicitly refuses when the policy does not settle the matter. Every substantive claim in an answer is traceable to a specific policy clause. The system deliberately separates retrieval, evidence sufficiency evaluation, and answer generation to avoid the dangerous failure mode of a fluent-but-unsupported response.
 
+## Repository Branches
+
+- **`main` (Current branch / Git tag: `ogproj`):** Baseline Day-1 implementation. Evaluates queries strictly against the original 2025 Consolidated Policy Manual.
+- **`surprise-challenge`:** Day-2 implementation. Introduces deterministic temporal policy grounding, Amendment No. 2026-01 parsing, and CLI `--date` support.
+
+To switch to the Day-2 Surprise Challenge branch:
+```bash
+git checkout surprise-challenge
+```
+
+---
+
 ## Current Status
 
-All 6 milestones are implemented and the 10-question final evaluation has been completed.
+All 6 milestones for Day-1 are implemented and the 10-question final evaluation has been completed.
 
-**Grounded Answer Generation
-Evidence Evaluation and Decision Layer
-Hybrid Policy Retrieval
-Clause-Level Parsing and Structured Clause Store
-Markdown Policy Ingestion
-Project Foundation**
+- Milestone 1: Project Foundation [COMPLETE]
+- Milestone 2: Markdown Policy Ingestion [COMPLETE]
+- Milestone 3: Clause-Level Parsing and Structured Clause Store [COMPLETE]
+- Milestone 4: Hybrid Policy Retrieval [COMPLETE]
+- Milestone 5: Evidence Evaluation and Decision Layer [COMPLETE]
+- Milestone 6: Grounded Answer Generation [COMPLETE]
+
+> Note: For the Day-2 Surprise Challenge (temporal grounding and Amendment No. 2026-01), switch to branch `surprise-challenge` via `git checkout surprise-challenge`.
+
+---
 
 ## Evaluation
 
