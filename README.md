@@ -33,6 +33,7 @@ All Day-1 milestones and Day-2 surprise challenge milestones are implemented and
 - **Day-2 Milestone 2:** Amendment Parsing & Structured Policy Versions [COMPLETE]
 - **Day-2 Milestone 3:** Deterministic Temporal Applicability Layer [COMPLETE]
 - **Day-2 Milestone 4:** Temporal Filter, Pipeline & CLI Integration [COMPLETE]
+- **Day-2 Milestone 5:** Verifiable Policy Citations with GitHub Source Links [COMPLETE]
 
 ---
 
@@ -66,8 +67,9 @@ Under this requirement:
 | **Temporal Filter Layer** | `src/temporal/filter.py` | `TemporalFilter` — maps raw retrieval results to applicable policy versions. |
 | **Pipeline Integration** | `src/pipeline.py` | `PolicyQAPipeline` — unifies Retrieval → Temporal Filter → Evidence Evaluator → Generator. |
 | **CLI Application** | `src/app.py` | Typer CLI with `--date / -d` and `--amendment` parameters. |
-| **Citation Formatting** | `src/citation/renderer.py` | Alphanumeric IDs (§10.5.3A) and provenance tags (`(Amendment No. 2026-01)`). |
-| **Unit & Integration Tests** | `tests/` | 409 automated offline tests (including `test_amendment_parser.py`, `test_temporal_resolver.py`, `test_temporal_pipeline.py`). |
+| **Citation Model** | `src/citation/models.py` | Immutable `Citation` dataclass — `clause_id`, `source_path`, `start_line`, `end_line`, `source_label`, `source_url`. |
+| **Citation Renderer** | `src/citation/renderer.py` | `generate_source_url()`, `create_citation()`, `validate_citation_url()` — commit-pinned GitHub URLs from `PolicyClause` provenance. |
+| **Unit & Integration Tests** | `tests/` | 464 automated offline tests (including `test_amendment_parser.py`, `test_temporal_resolver.py`, `test_temporal_pipeline.py`, `test_verifiable_citations.py`). |
 
 ---
 
@@ -122,11 +124,51 @@ Under this requirement:
 
 ### 4. How to Run and Test the Day-2 System
 
-#### Run All 409 Automated Offline Tests
+#### Run All 464 Automated Offline Tests
 ```bash
 pytest
 ```
 *Runs 100% offline in under 8 seconds without network calls or API keys.*
+
+---
+
+### 5. Verifiable Policy Citations (Milestone 5)
+
+Every citation produced by the system is directly traceable to the exact source text.
+
+**What a citation looks like:**
+
+```
+Citations:
+  - §4.3.2, line 18
+    Source: Amendment No. 2026-01
+    https://github.com/sahaya0806/brite-spark-grounded-answer/blob/0827c39fdaa69274f3da3b11b3fb49bd52d1912f/data/raw/Amendment%20No.%202026-01.md#L18
+
+  - §10.5.3A, lines 41–43
+    Source: Amendment No. 2026-01
+    https://github.com/sahaya0806/brite-spark-grounded-answer/blob/0827c39fdaa69274f3da3b11b3fb49bd52d1912f/data/raw/Amendment%20No.%202026-01.md#L41-L43
+```
+
+**For an original policy clause (pre-amendment):**
+
+```
+Citations:
+  - §4.3.2, line 200
+    Source: policy_manual
+    https://github.com/sahaya0806/brite-spark-grounded-answer/blob/0827c39fdaa69274f3da3b11b3fb49bd52d1912f/data/raw/policy_manual.md#L200
+```
+
+**How it works:**
+- Citations are generated from the `PolicyClause.source_path`, `start_line`, and `end_line` fields set during ingestion.
+- The source document is determined by `PolicyClause.source_document` — never inferred from the answer text.
+- URLs are commit-pinned (`/blob/<commit>/...`) so they always point to the exact text that was evaluated, regardless of future repository changes.
+- The LLM does not generate citation URLs. All URLs are constructed deterministically in `src/citation/renderer.py`.
+- Amendment citations point to `Amendment No. 2026-01.md`. Original citations point to `policy_manual.md`. It is structurally impossible to mix them up.
+- Neither corpus file is modified — all provenance is computed externally from immutable source documents.
+
+---
+
+
 
 #### Test 1: Change Reporting Deadline Pre-Amendment (`2026-02-20`)
 *Evaluates against 2025 manual where §4.3.2 (10 days) and §9.1.4 (30 days) conflicted:*

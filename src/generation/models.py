@@ -7,6 +7,7 @@ These models represent the final grounded output delivered to the CLI or caller.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from src.citation.models import Citation
 from src.evidence.models import ConflictDetail, DecisionStatus
 from src.ingestion.parser import PolicyClause
 
@@ -37,6 +38,8 @@ class GroundedAnswer:
         Internal reasoning from the evidence evaluation stage.
     primary_clauses:
         Authoritative PolicyClause records used to produce the answer.
+    verifiable_citations:
+        Structured, commit-pinned Citation objects pointing directly to source text lines.
     raw_llm_response:
         Raw LLM text response if an LLM was invoked, or None.
     """
@@ -50,4 +53,5 @@ class GroundedAnswer:
     conflicts: tuple[ConflictDetail, ...]
     rationale: str
     primary_clauses: tuple[PolicyClause, ...]
+    verifiable_citations: tuple[Citation, ...] = ()
     raw_llm_response: str | None = None

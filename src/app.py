@@ -64,7 +64,14 @@ def ask(
     typer.echo(f"Status: [{answer.status.value}]")
     typer.echo(f"Answer: {answer.answer_text}\n")
 
-    if answer.citations:
+    if answer.verifiable_citations:
+        typer.echo("Citations:")
+        for cit in answer.verifiable_citations:
+            source = cit.source_label.removesuffix(".md")
+            typer.echo(f"  - §{cit.clause_id}, {cit.line_label}")
+            typer.echo(f"    Source: {source}")
+            typer.echo(f"    {cit.source_url}")
+    elif answer.citations:
         typer.echo("Citations:")
         for cit in answer.citations:
             typer.echo(f"  - {cit}")
@@ -77,7 +84,7 @@ def info() -> None:
     """Display current system status."""
     typer.echo("The Grounded Answer — Brite Spark 2026")
     typer.echo("Problem 1: The Grounded Answer (AI / RAG)")
-    typer.echo("Status: Milestone 6 (Day 1) + Day-2 Milestone 4 (Temporal Pipeline & CLI Integration) complete.")
+    typer.echo("Status: Day-1 Milestone 6 + Day-2 Milestones 1-5 (Verifiable Citations) complete.")
     typer.echo("Pipeline: Ingestion → Hybrid Retrieval → Temporal Filter → Evidence Evaluation → Grounded Answer Generation")
 
 

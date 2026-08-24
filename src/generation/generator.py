@@ -8,6 +8,7 @@ GroundedAnswer according to strict grounding rules.
 from __future__ import annotations
 
 from src.citation.renderer import (
+    create_citation,
     extract_cited_clause_ids,
     format_clause_citation,
     sanitize_text_citations,
@@ -87,6 +88,7 @@ class GroundedAnswerGenerator:
             final_cids = tuple(valid_cited_ids)
 
         citations = tuple(format_clause_citation(c) for c in clauses)
+        verifiable_citations = tuple(create_citation(c) for c in clauses)
 
         return GroundedAnswer(
             question=decision.question,
@@ -98,6 +100,7 @@ class GroundedAnswerGenerator:
             conflicts=(),
             rationale=decision.rationale,
             primary_clauses=clauses,
+            verifiable_citations=verifiable_citations,
             raw_llm_response=raw_text,
         )
 
@@ -119,6 +122,7 @@ class GroundedAnswerGenerator:
         answer_text = " ".join(parts)
 
         citations = tuple(format_clause_citation(c) for c in decision.primary_clauses)
+        verifiable_citations = tuple(create_citation(c) for c in decision.primary_clauses)
 
         return GroundedAnswer(
             question=decision.question,
@@ -130,6 +134,7 @@ class GroundedAnswerGenerator:
             conflicts=(),
             rationale=decision.rationale,
             primary_clauses=decision.primary_clauses,
+            verifiable_citations=verifiable_citations,
             raw_llm_response=None,
         )
 
@@ -150,6 +155,7 @@ class GroundedAnswerGenerator:
         answer_text = " ".join(parts)
 
         citations = tuple(format_clause_citation(c) for c in decision.primary_clauses)
+        verifiable_citations = tuple(create_citation(c) for c in decision.primary_clauses)
 
         return GroundedAnswer(
             question=decision.question,
@@ -161,5 +167,6 @@ class GroundedAnswerGenerator:
             conflicts=decision.conflict_details,
             rationale=decision.rationale,
             primary_clauses=decision.primary_clauses,
+            verifiable_citations=verifiable_citations,
             raw_llm_response=None,
         )

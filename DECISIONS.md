@@ -1142,5 +1142,92 @@ questions are answered according to the date of the claim or determination being
 - Day-1 pipeline constructions without an amendment path continue to operate as pure base-corpus pipelines.
 
 
+---
 
+## ADR-043 — Verifiable Policy Citations (Day-2 Milestone 5)
 
+**Decision:** Generate deterministic, commit-pinned GitHub source URLs for every citation,
+derived exclusively from the structured provenance metadata already stored on `PolicyClause`.
+
+**Design principle:**
+> "A citation is not merely a clause ID. It is a verifiable pointer from the answer to the
+> exact source text used as evidence."
+
+**Context:** The existing citation system displayed `§4.3.2, line 200` in the CLI. This is
+readable but not directly actionable — a reader cannot jump straight to the exact text without
+knowing the filename, its location in the repository, and how to navigate to line 200.
+Milestone 5 makes citations fully verifiable by adding a stable, direct link to the source.
+
+**Why citations are generated from PolicyClause provenance:**
+`PolicyClause.source_path`, `start_line`, and `end_line` are set deterministically during
+ingestion, before any retrieval or generation occurs. They are the authoritative record of
+where a clause was found. Using these fields means no citation can be invented, guessed, or
+hallucinated after the fact.
+
+**Why source_path / start_line / end_line are authoritative:**
+These fields are populated at parse time by direct character-level scanning of the source file.
+They are frozen on a `@dataclass(frozen=True)` and cannot be modified after creation. The
+generation layer reads them; it never writes them.
+
+**Why GitHub source links are used:**
+GitHub renders Markdown with line anchors accessible via `#L<n>` or `#L<start>-L<end>`. A URL
+of the form `.../blob/<commit>/data/raw/policy_manual.md#L200-L203` opens directly at those
+lines. This format is standardised, widely supported, and copyable in environments that do not
+render terminal hyperlinks.
+
+**Why commit-pinned URLs are preferred over floating branch URLs:**
+A URL pointing to `/blob/main/...` will silently shift if the file changes after evaluation.
+A URL pointing to `/blob/<commit>/...` is permanently stable — the citation will always
+identify the exact text that was retrieved and evaluated, regardless of future changes to the
+repository. The commit used (`0827c39`) corresponds to the state of the corpus at the time of
+Day-2 Milestone 4 completion.
+
+**Why the LLM does not generate citation URLs:**
+LLMs can and do hallucinate facts, including file paths and line numbers. Allowing the model
+to construct citation URLs would create the exact failure mode the system is designed to
+prevent — a fluent but incorrect pointer. All URLs are constructed deterministically in
+`src/citation/renderer.py` from trusted `PolicyClause` fields, never from model output.
+
+**How original and amendment sources are distinguished:**
+`PolicyClause.source_document` is set to `"policy_manual.md"` for original clauses and to
+`"Amendment No. 2026-01.md"` for amended clauses. `generate_source_url()` uses the same
+`source_path` field (which is the actual file path) to construct the URL. It is structurally
+impossible for an original clause to produce an amendment URL or vice versa.
+
+**Why the policy corpus itself remains unmodified:**
+The corpus files are external, authoritative documents. Inserting HTML anchors or citation
+markers into them would change the canonical text and invalidate their authority. All
+provenance is computed externally from the immutable corpus.
+
+**What happens when provenance is missing:**
+If a clause has no `source_path` or a degenerate line range, `generate_source_url()` still
+produces a well-formed URL because the function requires both values to be provided. Any
+clause reaching the citation layer has passed through the parser, which always assigns
+`source_path`, `start_line`, and `end_line`. In the absence of a valid repository (e.g. the
+system is run in a private fork or offline environment), the URL will be structurally valid
+but the link target may not resolve. This is documented as a limitation.
+
+**What was deliberately not changed:**
+- FAISS, BM25, RRF, retrieval ranking — unchanged.
+- Temporal applicability logic — unchanged.
+- Evidence scoring and contradiction detection — unchanged.
+- The `citations: tuple[str, ...]` field on `GroundedAnswer` — preserved for backward
+  compatibility. The new `verifiable_citations: tuple[Citation, ...]` field is additive.
+- Policy corpus files — not modified.
+
+**Limitations:**
+- The GitHub URL is only resolvable if the repository is publicly accessible.
+- The commit SHA is currently stored as a constant in `renderer.py` and may need updating
+  if the corpus is ever re-ingested at a different commit.
+- The URL validator (`validate_citation_url`) performs deterministic structural checks only
+  and does not make network requests. URL correctness is verified through structure, not
+  through live HTTP.
+
+**Tests:**
+55 new offline deterministic tests in `tests/test_verifiable_citations.py` cover:
+URL generation, line anchors, URL encoding, alphanumeric IDs, commit pinning, original vs
+amendment distinction, temporal provenance, GroundedAnswer model, fabrication prevention,
+and edge-case safety.
+
+**Result:**
+Previously: 409 tests. After Milestone 5: 464 tests. All 464 passed.

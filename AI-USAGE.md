@@ -280,6 +280,41 @@ judgement.
   - Verified that date-sensitive queries without `--date` return an explicit refusal explaining that a date parameter is required.
   - Verified that unamended queries continue to work normally without a date parameter.
 
+---
 
+## Day-2 Milestone 5 — Verifiable Policy Citations
 
-
+- AI tools used during this phase: **Antigravity** (coding assistant by Google DeepMind).
+- **Process and Scope:**
+  - Created `src/citation/models.py` — an immutable `Citation` dataclass with fields for
+    `clause_id`, `source_path`, `start_line`, `end_line`, `source_label`, and `source_url`.
+  - Extended `src/citation/renderer.py` with `generate_source_url()`, `create_citation()`,
+    and `validate_citation_url()`. URLs are commit-pinned GitHub blob links with `#L<n>` or
+    `#L<start>-L<end>` anchors generated from `PolicyClause` provenance fields only.
+  - Added `verifiable_citations: tuple[Citation, ...]` field to `GroundedAnswer` (additive,
+    backward-compatible with `citations: tuple[str, ...]`).
+  - Updated all three generator handlers (`_handle_supported`, `_handle_insufficient`,
+    `_handle_conflicting`) to populate `verifiable_citations` from `PolicyClause` objects.
+  - Updated CLI (`src/app.py`) to render a human-readable, copyable citation block:
+    clause ID, line range, source document label, and full URL — one per citation.
+  - Written 55 new offline deterministic tests in `tests/test_verifiable_citations.py`.
+  - Documented ADR-043 in `DECISIONS.md`.
+- **What AI generated vs what was verified manually:**
+  - AI generated all implementation code, the test file, and the ADR.
+  - The team reviewed the generated URLs against the actual GitHub repository and confirmed
+    the commit SHA, path encoding, and line anchor format are correct.
+  - URL structure was validated offline (no HTTP requests in tests).
+  - CLI output was verified against both a pre-amendment date (2026-02-20, citing
+    `policy_manual.md`) and a post-amendment date (2026-04-20, citing
+    `Amendment No. 2026-01.md`), and against a direct non-temporal query.
+- **Limitations honestly stated:**
+  - Citation URLs were validated by structural inspection, not by making live HTTP requests
+    to GitHub. The links resolve in a browser but this was not automated in the test suite.
+  - The corpus commit SHA is a constant in `renderer.py`; it would need updating if the
+    corpus was re-ingested at a different commit.
+- **Independent Verification:**
+  - Previously 409 tests. After Milestone 5: **464 tests. All 464 passed.**
+  - CLI verified for:
+    - 2026-02-20 query cites `policy_manual.md#L200` and `policy_manual.md#L448` (CONFLICTING).
+    - 2026-04-20 query cites `Amendment%20No.%202026-01.md#L18` (SUPPORTED, 14 calendar days).
+    - Direct query cites `policy_manual.md#L372` and `policy_manual.md#L374` (SUPPORTED).
