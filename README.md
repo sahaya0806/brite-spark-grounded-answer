@@ -10,14 +10,156 @@ The Grounded Answer is a CLI-based policy question-answering assistant. Given a 
 
 ## Current Status
 
-All 6 milestones are implemented and the 10-question final evaluation has been completed.
+All Day-1 milestones and Day-2 surprise challenge milestones are implemented and verified.
 
-**Milestone 6 — Grounded Answer Generation** ✅
-**Milestone 5 — Evidence Evaluation and Decision Layer** ✅
-**Milestone 4 — Hybrid Policy Retrieval** ✅
-**Milestone 3 — Clause-Level Parsing and Structured Clause Store** ✅
-**Milestone 2 — Markdown Policy Ingestion** ✅
-**Milestone 1 — Project Foundation** ✅
+- **Day-1 Milestone 1–6 (Core Grounded QA Pipeline)** ✅
+- **Day-2 Milestone 1 (Temporal Policy Data Model)** ✅
+- **Day-2 Milestone 2 (Amendment Parsing & Structured Policy Versions)** ✅
+- **Day-2 Milestone 3 (Deterministic Temporal Applicability Layer)** ✅
+- **Day-2 Milestone 4 (Temporal Filter, Pipeline & CLI Integration)** ✅
+
+---
+
+## Day-2 Surprise Challenge: Temporal Policy Grounding
+
+### 1. Challenge Overview & Problem Definition
+
+In Day 2 of Brite Spark 2026, the organizers introduced **Amendment No. 2026-01** (effective **1 March 2026**).
+
+The core requirement is:
+> **The assistant must answer policy questions correctly for the DATE OF THE CLAIM / DETERMINATION being asked about, rather than simply answering according to the currently effective policy or confusing different temporal versions.**
+
+Under this requirement:
+- A claim or change occurring **before 1 March 2026** must be evaluated under the original **2025 Consolidated Policy Manual**.
+- A claim or determination occurring **on or after 1 March 2026** must be evaluated under the amended rules established by **Amendment No. 2026-01**.
+- If a date-sensitive question is asked **without a date**, the system must **refuse safely** (`INSUFFICIENT`) and prompt for `--date YYYY-MM-DD` rather than guessing "today" or assuming March 1.
+- Non-date-sensitive questions (unamended policy) must continue to function normally without requiring a date.
+
+---
+
+### 2. Where the Files Are Located
+
+| Component | File Path | Purpose / Implementation |
+|---|---|---|
+| **Original Policy Manual** | `data/raw/policy_manual.md` | 608 lines, 137 clauses. **Never modified.** |
+| **Amendment Document** | `data/raw/Amendment No. 2026-01.md` | 51 lines. **Never modified.** |
+| **Temporal Data Model** | `src/ingestion/parser.py` | `PolicyClause` extended with `effective_from`, `effective_to`, `source_document`. |
+| **Amendment Parser** | `src/ingestion/amendment.py` | `parse_amendment()`, `AmendmentDocument`, `AmendmentChange`, `TableRow`, `TriggerType`, `ChangeType`. |
+| **Temporal Models** | `src/temporal/models.py` | `TemporalContext`, `ResolutionStatus`, `TemporalResolution`. |
+| **Applicability Resolver** | `src/temporal/resolver.py` | `TemporalApplicabilityResolver` — deterministic rule engine evaluating §5.1 / §5.2 triggers. |
+| **Temporal Filter Layer** | `src/temporal/filter.py` | `TemporalFilter` — maps raw retrieval results to applicable policy versions. |
+| **Pipeline Integration** | `src/pipeline.py` | `PolicyQAPipeline` — unifies Retrieval → Temporal Filter → Evidence Evaluator → Generator. |
+| **CLI Application** | `src/app.py` | Typer CLI with `--date / -d` and `--amendment` parameters. |
+| **Citation Formatting** | `src/citation/renderer.py` | Alphanumeric IDs (§10.5.3A) and provenance tags (`(Amendment No. 2026-01)`). |
+| **Unit & Integration Tests** | `tests/` | 409 automated offline tests (including `test_amendment_parser.py`, `test_temporal_resolver.py`, `test_temporal_pipeline.py`). |
+
+---
+
+### 3. Architecture of the Temporal Grounded QA System
+
+```
+                      User Question + [--date YYYY-MM-DD]
+                                     ↓
+      ┌─────────────────────────────────────────────────────────────┐
+      │ 1. Hybrid Retrieval (FAISS Semantic + BM25 Lexical via RRF)  │
+      │    Indexes 138 total clauses (137 base + §10.5.3A)          │
+      └──────────────────────────────┬──────────────────────────────┘
+                                     │ Candidate Clauses
+                                     ↓
+      ┌─────────────────────────────────────────────────────────────┐
+      │ 2. Temporal Filter (TemporalFilter & Applicability Resolver)│
+      │    • Determination Date Trigger (§5.1): §6.4.1, §6.6.1,     │
+      │      §10.5.2, §10.5.3A                                      │
+      │    • Change of Circumstances Trigger (§5.2): §4.3.2, §9.1.4 │
+      │    • Replaces clause with applicable version; drops future; │
+      │    • If date-sensitive clause lacks required date → REFUSE  │
+      └──────────────────────────────┬──────────────────────────────┘
+                                     │ Active Temporal Evidence
+                                     ↓
+      ┌─────────────────────────────────────────────────────────────┐
+      │ 3. Evidence Evaluation (EvidenceEvaluator)                  │
+      │    • Signal extraction & relevance scoring                  │
+      │    • Scope-aware contradiction detection (on active policy) │
+      └──────────────────────────────┬──────────────────────────────┘
+                                     │
+           ┌─────────────────────────┼─────────────────────────┐
+           ↓                         ↓                         ↓
+     [SUPPORTED]              [INSUFFICIENT]             [CONFLICTING]
+           ↓                         ↓                         ↓
+  Grounded Answer          Deterministic Refusal    Surfaces Historical
+  (GPT-4o mini)            + Date Requirement       Contradictions
+  + Exact Citations        Explanation              with Exact Lines
+```
+
+#### Key Architectural Decisions:
+1. **Separation of Retrieval and Applicability:**
+   Retrieval indexes all candidate provisions across both documents (138 clauses). The `TemporalFilter` resolves each candidate clause to its applicable version *before* evidence evaluation begins.
+2. **Elimination of Cross-Temporal False Conflicts:**
+   The pre-amendment 10-day rule (§4.3.2) and post-amendment 14-day rule (§4.3.2) are never evaluated simultaneously. For any given claim date, only the temporally active rule is presented to the contradiction detector.
+3. **The Two Date Triggers (§5.1 vs §5.2):**
+   - **Determination Date Trigger (§5.1):** Governs earnings disregards (§6.4.1), income thresholds (§6.6.1), and sanctions (§10.5.2, §10.5.3A).
+   - **Change of Circumstances Trigger (§5.2):** Governs change reporting deadlines (§4.3.2) and overpayment safe harbours (§9.1.4).
+4. **Strict Refusal vs. Guessing Boundary:**
+   If a date-sensitive clause is retrieved but the caller provided no `--date`, the pipeline refuses with status `[INSUFFICIENT]` and clearly explains that a date parameter is required. It **never** guesses "today" or defaults to March 1.
+
+---
+
+### 4. How to Run and Test the Day-2 System
+
+#### Run All 409 Automated Offline Tests
+```bash
+pytest
+```
+*Runs 100% offline in under 8 seconds without network calls or API keys.*
+
+#### Test 1: Change Reporting Deadline Pre-Amendment (`2026-02-20`)
+*Evaluates against 2025 manual where §4.3.2 (10 days) and §9.1.4 (30 days) conflicted:*
+```bash
+python -m src ask "How many days does a recipient have to report a change?" --date 2026-02-20
+```
+- **Result:** `Status: [CONFLICTING]`
+- **Answer:** Surfaces the contradiction between §4.3.2 (10 calendar days) and §9.1.4 (30 calendar days).
+
+#### Test 2: Change Reporting Deadline Post-Amendment (`2026-04-20`)
+*Evaluates against Amendment No. 2026-01 where both provisions are aligned to 14 days:*
+```bash
+python -m src ask "How many days does a recipient have to report a change?" --date 2026-04-20
+```
+- **Result:** `Status: [SUPPORTED]`
+- **Answer:** 14 calendar days.
+- **Citation:** `§4.3.2, line 18 (Amendment No. 2026-01)`
+
+#### Test 3: Earnings Disregard Pre-Amendment (`2026-02-20`)
+```bash
+python -m src ask "What is the earnings disregard under section 6.4.1?" --date 2026-02-20
+```
+- **Result:** `Status: [SUPPORTED]`
+- **Answer:** $120 per month.
+- **Citation:** `§6.4.1, line 280 (policy_manual.md)`
+
+#### Test 4: Earnings Disregard Post-Amendment (`2026-04-20`)
+```bash
+python -m src ask "What is the earnings disregard under section 6.4.1?" --date 2026-04-20
+```
+- **Result:** `Status: [SUPPORTED]`
+- **Answer:** $175 per month.
+- **Citation:** `§6.4.1, line 23 (Amendment No. 2026-01)`
+
+#### Test 5: Date-Sensitive Question Without Date (Safe Refusal)
+```bash
+python -m src ask "How many days does a recipient have to report a change?"
+```
+- **Result:** `Status: [INSUFFICIENT]`
+- **Answer:** Refuses safely, explicitly prompting the user to supply `--date YYYY-MM-DD`.
+
+#### Test 6: Unamended Question Without Date (Day-1 Compatibility)
+```bash
+python -m src ask "What is the resource limit for a household?"
+```
+- **Result:** `Status: [SUPPORTED]`
+- **Answer:** $4,000 (answers normally without needing a date parameter).
+
+---
 
 ## Evaluation
 
